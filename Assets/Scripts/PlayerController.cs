@@ -33,6 +33,23 @@ public class PlayerController : MonoBehaviour
     [Header("Coyote Time Settings")]
     public float coyoteTimeDuration = 0.15f;  // 150 ms coyote time window
 
+    [Header("WallRunning")]
+    public float wallCheckDistance = 0.6f;
+    public LayerMask wallRunLayer;
+    public float wallRunGravity = -2f;
+    public float wallRunSpeed = 7f;
+    public float maxWallRunTime = 1.5f;
+    public float wallJumpForce = 8f;
+    private bool justWallJumped = false;
+    private float wallJumpCooldown = 0.2f;
+    private float wallJumpCooldownTimer = 0f;
+
+    // --- Internal State ---
+    private bool isWallRunning = false;
+    private bool isWallRight = false;
+    private bool isWallLeft = false;
+    private float wallRunTimer = 0f;
+
     private CharacterController controller;
     private Vector3 velocity;
     private bool isGrounded;
@@ -52,7 +69,6 @@ public class PlayerController : MonoBehaviour
     private float visualModelOriginalLocalY;
     private Coroutine slideVisualOffsetCoroutine;
 
-    // Coyote time counter for jump and slide
     private float coyoteTimeCounter = 0f;
 
     void Start()
@@ -75,6 +91,16 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
+        if (justWallJumped)
+        {
+            wallJumpCooldownTimer += Time.deltaTime;
+            if (wallJumpCooldownTimer >= wallJumpCooldown)
+            {
+                justWallJumped = false;
+                wallJumpCooldownTimer = 0f;
+            }
+        }
+
         if (isClimbing)
         {
             HandleClimbingAnimation();
@@ -86,11 +112,35 @@ public class PlayerController : MonoBehaviour
                 animator.SetBool("IsClimbing", false);
         }
 
-        GroundCheck();
+        CheckForWalls();
 
+        if (isWallRunning && Input.GetKeyDown(KeyCode.Space) && !justWallJumped)
+        {
+            Vector3 wallNormal = isWallRight ? transform.right : -transform.right;
+            Vector3 jumpDirection = (wallNormal * 1.5f + Vector3.up * 1.5f + transform.forward).normalized;
+
+            // Apply jump direction directly to velocity
+            velocity.x = jumpDirection.x * wallJumpForce;
+            velocity.y = jumpDirection.y * wallJumpForce;
+            velocity.z = jumpDirection.z * wallJumpForce;
+
+            justWallJumped = true;
+            isWallRunning = false;
+            wallRunTimer = 0f;
+
+            if (animator != null)
+                animator.SetBool("IsJumping", true);
+        }
+
+
+        HandleWallRunState();
+        GroundCheck();
         HandleJumpInput();
 
-        ApplyGravity();
+        if (isWallRunning)
+            WallRunningMovement();
+        else
+            ApplyGravity();
 
         HandleMovement();
 
@@ -117,11 +167,10 @@ public class PlayerController : MonoBehaviour
 
         if (isGrounded)
         {
-            // Reset coyote time counter when grounded
             coyoteTimeCounter = coyoteTimeDuration;
 
             if (velocity.y < 0)
-                velocity.y = -2f; // Small negative to keep player grounded and reset jump state
+                velocity.y = -2f; // Small negative to keep grounded
 
             if (jumpStarted)
             {
@@ -132,24 +181,24 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
-            // Count down coyote time when not grounded
             coyoteTimeCounter -= Time.deltaTime;
         }
     }
 
     private void HandleJumpInput()
     {
-        // Allow jump if grounded OR within coyote time window, and not sliding or already jumping
         if ((isGrounded || coyoteTimeCounter > 0f) && Input.GetKeyDown(KeyCode.Space) && !isSliding && !jumpStarted)
         {
             velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
             jumpStarted = true;
-
-            // Reset coyote timer after jump
             coyoteTimeCounter = 0f;
 
             if (animator != null)
                 animator.SetBool("IsJumping", true);
+
+            // Stop slide if jumping
+            if (isSliding)
+                EndSlide();
         }
     }
 
@@ -161,22 +210,30 @@ public class PlayerController : MonoBehaviour
     private void HandleMovement()
     {
         float horizontalInput = Input.GetAxis("Horizontal");
-        float currentSpeed = isSliding ? slideSpeed : runSpeed;
 
-        Vector3 move = transform.forward * currentSpeed + transform.right * horizontalInput * sideSpeed;
-        move.y = velocity.y;
+        if (isWallRunning)
+        {
+            // velocity.x and velocity.z already handled in WallRunningMovement
+            Vector3 move = new Vector3(velocity.x, velocity.y, velocity.z);
+            controller.Move(move * Time.deltaTime);
+        }
+        else
+        {
+            float currentSpeed = isSliding ? slideSpeed : runSpeed;
+            Vector3 move = transform.forward * currentSpeed + transform.right * horizontalInput * sideSpeed;
 
-        controller.Move(move * Time.deltaTime);
+            // Add vertical velocity
+            move.y = velocity.y;
+
+            controller.Move(move * Time.deltaTime);
+        }
     }
 
     private void HandleSlideInput()
     {
-        // Allow slide if grounded OR within coyote time window, and not already sliding
-        if ((isGrounded || coyoteTimeCounter > 0f) && Input.GetKeyDown(KeyCode.S) && !isSliding)
+        if ((isGrounded || coyoteTimeCounter > 0f) && Input.GetKeyDown(KeyCode.S) && !isSliding && !isClimbing)
         {
             StartSlide();
-
-            // Reset coyote timer after slide starts
             coyoteTimeCounter = 0f;
         }
 
@@ -192,7 +249,8 @@ public class PlayerController : MonoBehaviour
     {
         if (animator != null)
         {
-            animator.SetFloat("Speed", isSliding ? slideSpeed : runSpeed);
+            float speed = isSliding ? slideSpeed : runSpeed;
+            animator.SetFloat("Speed", speed);
             animator.SetBool("IsSliding", isSliding);
             animator.SetBool("IsClimbing", isClimbing);
         }
@@ -205,12 +263,7 @@ public class PlayerController : MonoBehaviour
         isSliding = true;
         slideTimer = slideDuration;
 
-        float heightDifference = controller.height - slideHeight;
-
         StartCoroutine(SmoothAdjustHeightAndCenter(slideHeight, new Vector3(0, slideHeight / 2f, 0)));
-
-        // Lower the player slightly to visually match slide height
-        transform.position -= new Vector3(0, heightDifference * 0.45f, 0);
 
         velocity.y = -2f;
 
@@ -227,12 +280,7 @@ public class PlayerController : MonoBehaviour
     {
         isSliding = false;
 
-        float heightDifference = originalHeight - controller.height;
-
         StartCoroutine(SmoothAdjustHeightAndCenter(originalHeight, originalCenter));
-
-        // Restore player position after slide height change
-        transform.position += new Vector3(0, heightDifference * 0.45f, 0);
 
         velocity.y = -2f;
 
@@ -325,8 +373,8 @@ public class PlayerController : MonoBehaviour
             Collider wallCollider = climbableTransform.GetComponent<Collider>();
             if (wallCollider != null)
             {
-                float wallBottomY = wallCollider.bounds.min.y;
-                climbStartPos = new Vector3(transform.position.x, wallBottomY, transform.position.z);
+                // Start climb at player's current X,Z and current Y to avoid teleportation
+                climbStartPos = transform.position;
 
                 float wallTopY = wallCollider.bounds.max.y + climbOffsetAboveWall;
                 climbEndPos = new Vector3(transform.position.x, wallTopY, transform.position.z);
@@ -378,7 +426,79 @@ public class PlayerController : MonoBehaviour
 
         if (animator != null)
             animator.SetBool("IsClimbing", false);
-
-        yield break;
     }
+
+    private void CheckForWalls()
+    {
+        isWallRight = Physics.Raycast(transform.position, transform.right, wallCheckDistance, wallRunLayer);
+        isWallLeft = Physics.Raycast(transform.position, -transform.right, wallCheckDistance, wallRunLayer);
+    }
+
+    private void HandleWallRunState()
+    {
+        if (isWallRight || isWallLeft)
+        {
+            if (!isWallRunning)
+            {
+                StartWallRun();
+            }
+            else
+            {
+                wallRunTimer += Time.deltaTime;
+                if (wallRunTimer > maxWallRunTime)
+                    StopWallRun();
+            }
+        }
+        else
+        {
+            if (isWallRunning)
+                StopWallRun();
+        }
+    }
+
+    private void StartWallRun()
+    {
+        isWallRunning = true;
+        wallRunTimer = 0f;
+        if (animator != null)
+            animator.SetBool("IsJumping", false);
+    }
+
+    private void StopWallRun()
+    {
+        isWallRunning = false;
+        wallRunTimer = 0f;
+    }
+
+    private void WallRunningMovement()
+    {
+        Vector3 wallNormal = isWallRight ? transform.right : -transform.right;
+
+        // Calculate wallForward as cross product of wallNormal and up
+        Vector3 wallForward = Vector3.Cross(wallNormal, Vector3.up).normalized;
+
+        // Check if wallForward points roughly in the same direction as player forward
+        if (Vector3.Dot(wallForward, transform.forward) < 0)
+        {
+            // If not, invert it
+            wallForward = -wallForward;
+        }
+
+        // Move player along the wall
+        Vector3 horizontalVelocity = wallForward * wallRunSpeed;
+
+        if (!justWallJumped)
+        {
+            // Only apply horizontal velocity when not just wall jumping
+            velocity.x = horizontalVelocity.x;
+            velocity.z = horizontalVelocity.z;
+
+            // Reduced gravity during wall run
+            velocity.y += wallRunGravity * Time.deltaTime;
+        }
+
+
+
+    }
+
 }
