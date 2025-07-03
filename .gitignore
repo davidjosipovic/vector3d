@@ -75,3 +75,8 @@ crashlytics-build.properties
 /[Aa]ssets/[Ss]treamingAssets/aa/*
 
 # End of https://www.toptal.com/developers/gitignore/api/unity
+
+# Large Asset Store packages
+# NYC Buildings - too large for Git, import manually
+/[Aa]ssets/Environment/(HDRP) NYC-Like City Buildings Set (PBR)*/
+/[Aa]ssets/Environment/(HDRP) NYC-Like City Buildings Set (PBR).meta
