@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
-
+ 
 public class PlayerController : MonoBehaviour
 {
     [Header("Movement Settings")]
@@ -38,11 +38,14 @@ public class PlayerController : MonoBehaviour
     public LayerMask wallRunLayer;
     public float wallRunGravity = -2f;
     public float wallRunSpeed = 7f;
-    public float maxWallRunTime = 1.5f;
-    public float wallJumpForce = 8f;
+    public float maxWallRunTime = 3f; // 3 seconds stick time
+    public float wallJumpForce = 5f;
     private bool justWallJumped = false;
-    private float wallJumpCooldown = 0.2f;
+    private float wallJumpCooldown = 1f; // Reduced cooldown
     private float wallJumpCooldownTimer = 0f;
+    private bool wallRunExpired = false;
+    private float wallRunExpiredCooldown = 0.5f;
+    private float wallRunExpiredTimer = 0f;
 
     // --- Internal State ---
     private bool isWallRunning = false;
@@ -101,6 +104,16 @@ public class PlayerController : MonoBehaviour
             }
         }
 
+        if (wallRunExpired)
+        {
+            wallRunExpiredTimer += Time.deltaTime;
+            if (wallRunExpiredTimer >= wallRunExpiredCooldown)
+            {
+                wallRunExpired = false;
+                wallRunExpiredTimer = 0f;
+            }
+        }
+
         if (isClimbing)
         {
             HandleClimbingAnimation();
@@ -114,17 +127,19 @@ public class PlayerController : MonoBehaviour
 
         CheckForWalls();
 
+        // Wall Jump
         if (isWallRunning && Input.GetKeyDown(KeyCode.Space) && !justWallJumped)
         {
-            Vector3 wallNormal = isWallRight ? transform.right : -transform.right;
-            Vector3 jumpDirection = (wallNormal * 1.5f + Vector3.up * 1.5f + transform.forward).normalized;
+            Vector3 wallNormal = isWallRight ? -transform.right : transform.right; // Jump away from wall
+            // Shorter wall jump - less horizontal distance, moderate upward force
+            Vector3 jumpDirection = (wallNormal * 0.7f + Vector3.up * 1f).normalized;
 
-            // Apply jump direction directly to velocity
-            velocity.x = jumpDirection.x * wallJumpForce;
-            velocity.y = jumpDirection.y * wallJumpForce;
-            velocity.z = jumpDirection.z * wallJumpForce;
+            velocity = jumpDirection * wallJumpForce;
 
             justWallJumped = true;
+            jumpStarted = true; // Set this so landing detection works for wall jumps too
+            wallRunExpired = true; // Prevent immediate wall run restart
+            wallRunExpiredTimer = 0f;
             isWallRunning = false;
             wallRunTimer = 0f;
 
@@ -172,7 +187,8 @@ public class PlayerController : MonoBehaviour
             if (velocity.y < 0)
                 velocity.y = -2f; // Small negative to keep grounded
 
-            if (jumpStarted)
+            // Reset jumping animation when landing (for both regular jumps and wall jumps)
+            if (jumpStarted || animator.GetBool("IsJumping"))
             {
                 jumpStarted = false;
                 if (animator != null)
@@ -213,9 +229,13 @@ public class PlayerController : MonoBehaviour
 
         if (isWallRunning)
         {
-            // velocity.x and velocity.z already handled in WallRunningMovement
-            Vector3 move = new Vector3(velocity.x, velocity.y, velocity.z);
-            controller.Move(move * Time.deltaTime);
+            // During wall run, use automatic wall running movement (ignore player input)
+            controller.Move(velocity * Time.deltaTime);
+        }
+        else if (justWallJumped)
+        {
+            // During wall jump, ignore player input completely - just apply velocity
+            controller.Move(velocity * Time.deltaTime);
         }
         else
         {
@@ -430,29 +450,46 @@ public class PlayerController : MonoBehaviour
 
     private void CheckForWalls()
     {
-        isWallRight = Physics.Raycast(transform.position, transform.right, wallCheckDistance, wallRunLayer);
-        isWallLeft = Physics.Raycast(transform.position, -transform.right, wallCheckDistance, wallRunLayer);
+        // Check for walls when airborne
+        if (!isGrounded)
+        {
+            isWallRight = Physics.Raycast(transform.position, transform.right, wallCheckDistance, wallRunLayer);
+            isWallLeft = Physics.Raycast(transform.position, -transform.right, wallCheckDistance, wallRunLayer);
+        }
+        else
+        {
+            isWallRight = false;
+            isWallLeft = false;
+        }
     }
 
     private void HandleWallRunState()
     {
-        if (isWallRight || isWallLeft)
+        // Check if wall run timer has expired first
+        if (isWallRunning)
         {
-            if (!isWallRunning)
+            wallRunTimer += Time.deltaTime;
+            Debug.Log($"Wall run timer: {wallRunTimer:F2} / {maxWallRunTime}");
+            if (wallRunTimer >= maxWallRunTime)
             {
-                StartWallRun();
-            }
-            else
-            {
-                wallRunTimer += Time.deltaTime;
-                if (wallRunTimer > maxWallRunTime)
-                    StopWallRun();
+                Debug.Log("Timer expired - stopping wall run!");
+                wallRunExpired = true;
+                wallRunExpiredTimer = 0f;
+                StopWallRun();
+                return;
             }
         }
-        else
+
+        // Only allow wall run if airborne and touching a wall and not in cooldown
+        bool canWallRun = !isGrounded && (isWallRight || isWallLeft) && !justWallJumped && !wallRunExpired;
+        if (canWallRun && !isWallRunning)
         {
-            if (isWallRunning)
-                StopWallRun();
+            StartWallRun();
+        }
+        else if (!canWallRun && isWallRunning)
+        {
+            Debug.Log("Can't wall run anymore - stopping!");
+            StopWallRun();
         }
     }
 
@@ -460,6 +497,8 @@ public class PlayerController : MonoBehaviour
     {
         isWallRunning = true;
         wallRunTimer = 0f;
+        velocity.y = 0f; // Reset vertical velocity for smooth wall run
+        Debug.Log("Wall run started!");
         if (animator != null)
             animator.SetBool("IsJumping", false);
     }
@@ -468,37 +507,29 @@ public class PlayerController : MonoBehaviour
     {
         isWallRunning = false;
         wallRunTimer = 0f;
+        Debug.Log("Wall run stopped!");
+        
+        // When wall run stops, apply normal gravity to make player fall
+        // Don't reset velocity.y to 0 - let them fall naturally
     }
 
     private void WallRunningMovement()
     {
         Vector3 wallNormal = isWallRight ? transform.right : -transform.right;
-
-        // Calculate wallForward as cross product of wallNormal and up
         Vector3 wallForward = Vector3.Cross(wallNormal, Vector3.up).normalized;
 
-        // Check if wallForward points roughly in the same direction as player forward
+        // Ensure wallForward is in the same direction as player forward
         if (Vector3.Dot(wallForward, transform.forward) < 0)
         {
-            // If not, invert it
             wallForward = -wallForward;
         }
 
-        // Move player along the wall
-        Vector3 horizontalVelocity = wallForward * wallRunSpeed;
-
-        if (!justWallJumped)
-        {
-            // Only apply horizontal velocity when not just wall jumping
-            velocity.x = horizontalVelocity.x;
-            velocity.z = horizontalVelocity.z;
-
-            // Reduced gravity during wall run
-            velocity.y += wallRunGravity * Time.deltaTime;
-        }
-
-
-
+        // Move player automatically along the wall at constant speed
+        velocity.x = wallForward.x * wallRunSpeed;
+        velocity.z = wallForward.z * wallRunSpeed;
+        
+        // Apply very light gravity during wall run
+        velocity.y += wallRunGravity * Time.deltaTime;
     }
 
 }
