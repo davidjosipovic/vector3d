@@ -78,5 +78,5 @@ crashlytics-build.properties
 
 # Large Asset Store packages
 # NYC Buildings - too large for Git, import manually
-/[Aa]ssets/Environment/(HDRP) NYC-Like City Buildings Set (PBR)*/
-/[Aa]ssets/Environment/(HDRP) NYC-Like City Buildings Set (PBR).meta
+/[Aa]ssets/(HDRP) NYC-Like City Buildings Set (PBR)*/
+/[Aa]ssets/(HDRP) NYC-Like City Buildings Set (PBR).meta
