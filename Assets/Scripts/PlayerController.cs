@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
- 
+
 public class PlayerController : MonoBehaviour
 {
     [Header("Movement Settings")]
@@ -508,7 +508,7 @@ public class PlayerController : MonoBehaviour
         isWallRunning = false;
         wallRunTimer = 0f;
         Debug.Log("Wall run stopped!");
-        
+
         // When wall run stops, apply normal gravity to make player fall
         // Don't reset velocity.y to 0 - let them fall naturally
     }
@@ -527,9 +527,67 @@ public class PlayerController : MonoBehaviour
         // Move player automatically along the wall at constant speed
         velocity.x = wallForward.x * wallRunSpeed;
         velocity.z = wallForward.z * wallRunSpeed;
-        
+
         // Apply very light gravity during wall run
         velocity.y += wallRunGravity * Time.deltaTime;
     }
+
+    // Method to reset player state when respawning at checkpoint
+    public void ResetPlayerState()
+    {
+        // Reset movement state
+        velocity = Vector3.zero;
+        isGrounded = false;
+
+        // Reset jumping state
+        jumpStarted = false;
+        coyoteTimeCounter = 0f;
+
+        // Reset wall running state
+        isWallRunning = false;
+        isWallRight = false;
+        isWallLeft = false;
+        wallRunTimer = 0f;
+        justWallJumped = false;
+        wallJumpCooldownTimer = 0f;
+        wallRunExpired = false;
+        wallRunExpiredTimer = 0f;
+
+        // Reset sliding state
+        if (isSliding)
+        {
+            EndSlide();
+        }
+
+        // Reset climbing state
+        if (isClimbing)
+        {
+            StopAllCoroutines();
+            isClimbing = false;
+            controller.enabled = true;
+        }
+
+        // Reset character controller
+        controller.height = originalHeight;
+        controller.center = originalCenter;
+
+        // Reset animations
+        if (animator != null)
+        {
+            animator.SetBool("IsJumping", false);
+            animator.SetBool("IsSliding", false);
+            animator.SetBool("IsClimbing", false);
+            animator.SetFloat("Speed", 0f);
+        }
+
+        // Reset visual model position
+        if (visualModel != null)
+        {
+            visualModel.localPosition = new Vector3(0, visualModelOriginalLocalY, 0);
+        }
+
+        Debug.Log("Player state reset for checkpoint respawn");
+    }
+
 
 }
