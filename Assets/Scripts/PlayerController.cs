@@ -31,7 +31,8 @@ public class PlayerController : MonoBehaviour
     public Transform visualModel;
 
     [Header("Coyote Time Settings")]
-    public float coyoteTimeDuration = 0.15f;  // 150 ms coyote time window
+    public float coyoteTimeDuration = 0.1f;  // 100ms coyote time window (reduced from 150ms)
+    public float jumpBufferDuration = 0.1f;  // Jump input buffer window
 
     [Header("WallRunning")]
     public float wallCheckDistance = 0.6f;
@@ -73,6 +74,7 @@ public class PlayerController : MonoBehaviour
     private Coroutine slideVisualOffsetCoroutine;
 
     private float coyoteTimeCounter = 0f;
+    private float jumpBufferCounter = 0f;
 
     void Start()
     {
@@ -90,6 +92,27 @@ public class PlayerController : MonoBehaviour
             Debug.LogWarning("VisualModel not assigned.");
         else
             visualModelOriginalLocalY = visualModel.localPosition.y;
+            
+        // Start the level timer when player is ready
+        if (LevelTimer.Instance != null)
+        {
+            LevelTimer.Instance.StartTimer();
+            Debug.Log("PlayerController: Timer started successfully!");
+        }
+        else
+        {
+            Debug.LogWarning("PlayerController: LevelTimer instance not found! Searching for LevelTimer component...");
+            LevelTimer timer = FindObjectOfType<LevelTimer>();
+            if (timer != null)
+            {
+                timer.StartTimer();
+                Debug.Log("PlayerController: Found and started LevelTimer component!");
+            }
+            else
+            {
+                Debug.LogError("PlayerController: No LevelTimer found in scene! Timer will not work.");
+            }
+        }
     }
 
     void Update()
@@ -192,8 +215,12 @@ public class PlayerController : MonoBehaviour
 
         if (isGrounded)
         {
-            // Reset coyote time when grounded
-            coyoteTimeCounter = coyoteTimeDuration;
+            // Only reset coyote time if we weren't grounded before (just landed)
+            if (!wasGrounded)
+            {
+                coyoteTimeCounter = coyoteTimeDuration;
+                Debug.Log($"Player landed - coyote time set: {coyoteTimeCounter:F3}s");
+            }
 
             if (velocity.y < 0)
                 velocity.y = -2f; // Small negative to keep grounded
@@ -210,37 +237,60 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
-            // Only decrease coyote time if we were previously grounded
+            // Only start counting down coyote time if we were previously grounded
             if (wasGrounded)
             {
                 Debug.Log($"Player left ground - coyote time started: {coyoteTimeCounter:F3}s");
             }
-            coyoteTimeCounter -= Time.deltaTime;
+            
+            // Always count down coyote time when in air
+            if (coyoteTimeCounter > 0f)
+            {
+                coyoteTimeCounter -= Time.deltaTime;
+            }
         }
     }
 
     private void HandleJumpInput()
     {
-        bool canJump = (isGrounded || coyoteTimeCounter > 0f) && !isSliding && !jumpStarted;
+        // Handle jump input buffering
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            jumpBufferCounter = jumpBufferDuration;
+            Debug.Log($"Jump input buffered: {jumpBufferCounter:F3}s");
+        }
         
-        if (canJump && Input.GetKeyDown(KeyCode.Space))
+        // Count down jump buffer
+        if (jumpBufferCounter > 0f)
+        {
+            jumpBufferCounter -= Time.deltaTime;
+        }
+
+        // Check if we can execute a jump (either normal or coyote)
+        bool hasJumpInput = jumpBufferCounter > 0f;
+        bool canCoyoteJump = !isGrounded && coyoteTimeCounter > 0f;
+        bool canRegularJump = isGrounded;
+        bool canJump = hasJumpInput && (canRegularJump || canCoyoteJump) && !isSliding && !jumpStarted;
+        
+        if (canJump)
         {
             velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
             jumpStarted = true;
             
             // Log for debugging coyote jumps vs regular jumps
-            bool isCoyoteJump = !isGrounded && coyoteTimeCounter > 0f;
+            bool isCoyoteJump = canCoyoteJump && !canRegularJump;
             if (isCoyoteJump)
             {
-                Debug.Log($"Coyote jump executed! Coyote time remaining: {coyoteTimeCounter:F3}s");
+                Debug.Log($"Coyote jump executed! Coyote time remaining: {coyoteTimeCounter:F3}s, Input buffer: {jumpBufferCounter:F3}s");
             }
             else
             {
-                Debug.Log("Regular jump executed.");
+                Debug.Log($"Regular jump executed. Input buffer: {jumpBufferCounter:F3}s");
             }
             
-            // Reset coyote time after any jump
+            // Reset both timers after any jump
             coyoteTimeCounter = 0f;
+            jumpBufferCounter = 0f;
 
             if (animator != null)
                 animator.SetBool("IsJumping", true);
@@ -625,6 +675,7 @@ public class PlayerController : MonoBehaviour
         // Reset jumping state
         jumpStarted = false;
         coyoteTimeCounter = 0f;
+        jumpBufferCounter = 0f;
 
         // Reset wall running state
         isWallRunning = false;
@@ -678,10 +729,13 @@ public class PlayerController : MonoBehaviour
         Debug.Log($"=== COYOTE TIME DEBUG ===");
         Debug.Log($"Is Grounded: {isGrounded}");
         Debug.Log($"Coyote Time Counter: {coyoteTimeCounter:F3}s / {coyoteTimeDuration:F3}s");
+        Debug.Log($"Jump Buffer Counter: {jumpBufferCounter:F3}s / {jumpBufferDuration:F3}s");
         Debug.Log($"Jump Started: {jumpStarted}");
         Debug.Log($"Is Jumping (Animation): {(animator != null ? animator.GetBool("IsJumping") : "No Animator")}");
         Debug.Log($"Velocity Y: {velocity.y:F2}");
         Debug.Log($"Can Coyote Jump: {!isGrounded && coyoteTimeCounter > 0f && !jumpStarted}");
+        Debug.Log($"Can Regular Jump: {isGrounded && !jumpStarted}");
+        Debug.Log($"Has Jump Input: {jumpBufferCounter > 0f}");
         Debug.Log($"========================");
     }
 }

@@ -87,6 +87,12 @@ public class CheckpointManager : MonoBehaviour
         GameObject player = GameObject.FindGameObjectWithTag("Player");
         if (player != null)
         {
+            // Notify timer system about respawn (timer continues)
+            if (LevelTimer.Instance != null)
+            {
+                LevelTimer.Instance.OnPlayerRespawn();
+            }
+            
             // Disable CharacterController temporarily for teleportation
             CharacterController controller = player.GetComponent<CharacterController>();
             if (controller != null)
