@@ -41,12 +41,27 @@ public class PlayerController : MonoBehaviour
     public float wallRunSpeed = 7f;
     public float maxWallRunTime = 3f; // 3 seconds stick time
     public float wallJumpForce = 5f;
+    [Header("Wall Jump Direction")]
+    public float wallJumpForwardForce = 0.3f;   // How much forward momentum (reduced for building hopping)
+    public float wallJumpSideForce = 0.8f;      // How much sideways push from wall (increased for distance)
+    public float wallJumpUpwardForce = 1.0f;    // How much upward force (balanced for chaining)
+    [Header("Wall Jump Chaining")]
+    public bool allowWallJumpChaining = true;   // Allow multiple wall jumps without touching ground
+    public float wallJumpChainCooldown = 0.1f;  // Cooldown between wall jumps when chaining (reduced)
+    public int maxConsecutiveWallJumps = 5;     // Max wall jumps before requiring ground touch
+    public float wallJumpGracePeriod = 0.3f;    // Grace period to find next wall after jump (increased)
+    public float wallJumpMovementDuration = 0.4f; // How long wall jump momentum lasts
     private bool justWallJumped = false;
-    private float wallJumpCooldown = 1f; // Reduced cooldown
+    
     private float wallJumpCooldownTimer = 0f;
     private bool wallRunExpired = false;
     private float wallRunExpiredCooldown = 0.5f;
     private float wallRunExpiredTimer = 0f;
+    private int consecutiveWallJumps = 0;       // Track consecutive wall jumps
+    private float wallJumpGraceTimer = 0f;     // Grace period timer for finding next wall
+    private float wallJumpMovementTimer = 0f;  // Timer for wall jump movement duration
+    private float wallContactLostTimer = 0f;   // Timer for when wall contact is lost
+    private float wallContactTolerance = 0.5f; // How long to wait before stopping wall run when contact is lost
 
     // --- Internal State ---
     private bool isWallRunning = false;
@@ -123,13 +138,69 @@ public class PlayerController : MonoBehaviour
             TestCoyoteTime();
         }
         
+        // Debug key for forcing wall jump (for testing)
+        if (Input.GetKeyDown(KeyCode.Y))
+        {
+            Debug.Log("🔧 FORCE WALL JUMP TEST");
+            justWallJumped = false; // Reset flag
+            wallJumpCooldownTimer = wallJumpChainCooldown; // Reset cooldown
+            Debug.Log($"Flags reset - justWallJumped: {justWallJumped}, cooldown: {wallJumpCooldownTimer}");
+        }
+        
+        // Debug key for wall run timer test
+        if (Input.GetKeyDown(KeyCode.U))
+        {
+            Debug.Log("=== WALL RUN DEBUG INFO ===");
+            Debug.Log($"Wall Run Timer: {wallRunTimer:F2}s/{maxWallRunTime:F2}s");
+            Debug.Log($"Contact Lost Timer: {wallContactLostTimer:F2}s/{wallContactTolerance:F2}s");
+            Debug.Log($"Is Wall Running: {isWallRunning}");
+            Debug.Log($"Wall Contact: R{isWallRight} L{isWallLeft}");
+            Debug.Log($"Is Grounded: {isGrounded}");
+            Debug.Log($"Wall Check Distance: {wallCheckDistance}");
+            Debug.Log($"Wall Run Layer: {wallRunLayer.value}");
+            float timeLeft = isWallRunning ? (maxWallRunTime - wallRunTimer) : 0f;
+            Debug.Log($"Time Remaining: {timeLeft:F2}s");
+            Debug.Log("==============================");
+        }
+        
+        // Debug key to force stop wall run
+        if (Input.GetKeyDown(KeyCode.I))
+        {
+            if (isWallRunning)
+            {
+                Debug.Log("🔧 FORCE STOPPING WALL RUN (Debug Key I)");
+                DebugForceStopWallRun();
+            }
+            else
+            {
+                Debug.Log("🔧 Not wall running - nothing to stop");
+            }
+        }
+        
         if (justWallJumped)
         {
             wallJumpCooldownTimer += Time.deltaTime;
-            if (wallJumpCooldownTimer >= wallJumpCooldown)
+            if (wallJumpCooldownTimer >= wallJumpChainCooldown) // Use chain cooldown instead
             {
                 justWallJumped = false;
                 wallJumpCooldownTimer = 0f;
+                Debug.Log("Wall jump cooldown finished - can wall jump again");
+            }
+        }
+
+        // Handle wall jump grace period
+        if (wallJumpGraceTimer > 0f)
+        {
+            wallJumpGraceTimer -= Time.deltaTime;
+        }
+        
+        // Handle wall jump movement timer
+        if (wallJumpMovementTimer > 0f)
+        {
+            wallJumpMovementTimer -= Time.deltaTime;
+            if (wallJumpMovementTimer <= 0f)
+            {
+                Debug.Log("Wall jump movement timer finished");
             }
         }
 
@@ -156,27 +227,70 @@ public class PlayerController : MonoBehaviour
 
         CheckForWalls();
 
-        // Wall Jump
-        if (isWallRunning && Input.GetKeyDown(KeyCode.Space) && !justWallJumped)
+        // Wall Jump - Enhanced for building hopping
+        bool isNearWall = isWallRight || isWallLeft;
+        bool canAttemptWallJump = (isWallRunning || isNearWall || wallJumpGraceTimer > 0f);
+        
+        if (canAttemptWallJump && Input.GetKeyDown(KeyCode.Space) && !justWallJumped)
         {
-            Vector3 wallNormal = isWallRight ? -transform.right : transform.right; // Jump away from wall
-            // Shorter wall jump - less horizontal distance, moderate upward force
-            Vector3 jumpDirection = (wallNormal * 0.7f + Vector3.up * 1f).normalized;
-
-            velocity = jumpDirection * wallJumpForce;
-
-            justWallJumped = true;
-            jumpStarted = true; // Set this so landing detection works for wall jumps too
-            wallRunExpired = true; // Prevent immediate wall run restart
-            wallRunExpiredTimer = 0f;
-            isWallRunning = false;
-            wallRunTimer = 0f;
-            coyoteTimeCounter = 0f; // Reset coyote time after wall jump
-
-            if (animator != null)
-                animator.SetBool("IsJumping", true);
+            // Check if we can still chain wall jumps
+            bool canChainWallJump = allowWallJumpChaining && consecutiveWallJumps < maxConsecutiveWallJumps;
+            
+            if (canChainWallJump || isGrounded)
+            {
+                // Determine which wall we're jumping from
+                bool jumpingFromRightWall = isWallRight;
+                if (!isWallRight && !isWallLeft)
+                {
+                    // If no current wall detected, use the last known wall from grace period
+                    jumpingFromRightWall = (wallJumpGraceTimer > 0f) ? isWallRight : true;
+                }
                 
-            Debug.Log("Wall jump executed - coyote time reset");
+                Vector3 wallNormal = jumpingFromRightWall ? -transform.right : transform.right;
+                
+                // Enhanced wall jump for building hopping
+                Vector3 forwardComponent = transform.forward * wallJumpForwardForce;
+                Vector3 sideComponent = wallNormal * wallJumpSideForce;
+                Vector3 upComponent = Vector3.up * wallJumpUpwardForce;
+                
+                Vector3 jumpDirection = (forwardComponent + sideComponent + upComponent).normalized;
+
+                velocity = jumpDirection * wallJumpForce;
+
+                justWallJumped = true;
+                jumpStarted = true;
+                wallJumpCooldownTimer = 0f; // Reset cooldown timer
+                wallJumpMovementTimer = wallJumpMovementDuration; // Start movement timer
+                
+                // Increment consecutive wall jumps if not grounded
+                if (!isGrounded)
+                {
+                    consecutiveWallJumps++;
+                    Debug.Log($"🚀 Wall jump chain #{consecutiveWallJumps} executed!");
+                }
+                else
+                {
+                    consecutiveWallJumps = 1;
+                    Debug.Log("🚀 Ground wall jump executed!");
+                }
+                
+                // Start grace period for finding next wall
+                wallJumpGraceTimer = wallJumpGracePeriod;
+                
+                // Stop current wall run to prevent sticking
+                isWallRunning = false;
+                wallRunTimer = 0f;
+                coyoteTimeCounter = 0f;
+
+                if (animator != null)
+                    animator.SetBool("IsJumping", true);
+                    
+                Debug.Log($"Wall jump executed - Chain: {consecutiveWallJumps}/{maxConsecutiveWallJumps}, Direction: {jumpDirection}, Wall: {(jumpingFromRightWall ? "Right" : "Left")}");
+            }
+            else
+            {
+                Debug.Log($"❌ Wall jump chain limit reached ({consecutiveWallJumps}/{maxConsecutiveWallJumps}) - need to touch ground!");
+            }
         }
 
 
@@ -188,6 +302,9 @@ public class PlayerController : MonoBehaviour
             WallRunningMovement();
         else
             ApplyGravity();
+
+        // Safety check for wall run timer
+        SafetyCheckWallRunTimer();
 
         HandleMovement();
 
@@ -219,7 +336,8 @@ public class PlayerController : MonoBehaviour
             if (!wasGrounded)
             {
                 coyoteTimeCounter = coyoteTimeDuration;
-                Debug.Log($"Player landed - coyote time set: {coyoteTimeCounter:F3}s");
+                consecutiveWallJumps = 0; // Reset wall jump chain when touching ground
+                Debug.Log($"Player landed - coyote time set: {coyoteTimeCounter:F3}s, wall jump chain reset");
             }
 
             if (velocity.y < 0)
@@ -315,10 +433,14 @@ public class PlayerController : MonoBehaviour
             // During wall run, use automatic wall running movement (ignore player input)
             controller.Move(velocity * Time.deltaTime);
         }
-        else if (justWallJumped)
+        else if (wallJumpMovementTimer > 0f)
         {
-            // During wall jump, ignore player input completely - just apply velocity
-            controller.Move(velocity * Time.deltaTime);
+            // During wall jump momentum period, preserve wall jump velocity but allow some input
+            Vector3 inputMovement = transform.right * horizontalInput * sideSpeed * 0.3f; // Reduced side control
+            Vector3 move = velocity + inputMovement;
+            controller.Move(move * Time.deltaTime);
+            
+            Debug.Log($"Wall jump movement: timer {wallJumpMovementTimer:F2}s, velocity: {velocity}");
         }
         else
         {
@@ -579,8 +701,46 @@ public class PlayerController : MonoBehaviour
         // Check for walls when airborne
         if (!isGrounded)
         {
-            isWallRight = Physics.Raycast(transform.position, transform.right, wallCheckDistance, wallRunLayer);
-            isWallLeft = Physics.Raycast(transform.position, -transform.right, wallCheckDistance, wallRunLayer);
+            // Multiple raycast points for more reliable wall detection
+            Vector3 rayStart = transform.position;
+            Vector3 rayStartLower = transform.position + Vector3.down * 0.5f;
+            Vector3 rayStartUpper = transform.position + Vector3.up * 0.5f;
+            
+            // Cast multiple rays for better detection
+            bool rightWall1 = Physics.Raycast(rayStart, transform.right, wallCheckDistance, wallRunLayer);
+            bool rightWall2 = Physics.Raycast(rayStartLower, transform.right, wallCheckDistance, wallRunLayer);
+            bool rightWall3 = Physics.Raycast(rayStartUpper, transform.right, wallCheckDistance, wallRunLayer);
+            
+            bool leftWall1 = Physics.Raycast(rayStart, -transform.right, wallCheckDistance, wallRunLayer);
+            bool leftWall2 = Physics.Raycast(rayStartLower, -transform.right, wallCheckDistance, wallRunLayer);
+            bool leftWall3 = Physics.Raycast(rayStartUpper, -transform.right, wallCheckDistance, wallRunLayer);
+            
+            // Wall detected if any of the rays hit
+            isWallRight = rightWall1 || rightWall2 || rightWall3;
+            isWallLeft = leftWall1 || leftWall2 || leftWall3;
+            
+            // Draw debug rays in Scene view (only the main ones to avoid clutter)
+            Debug.DrawRay(rayStart, transform.right * wallCheckDistance, isWallRight ? Color.green : Color.red);
+            Debug.DrawRay(rayStart, -transform.right * wallCheckDistance, isWallLeft ? Color.green : Color.red);
+            
+            // Additional rays in different colors
+            Debug.DrawRay(rayStartLower, transform.right * wallCheckDistance, rightWall2 ? Color.cyan : Color.gray, 0f, false);
+            Debug.DrawRay(rayStartLower, -transform.right * wallCheckDistance, leftWall2 ? Color.cyan : Color.gray, 0f, false);
+            
+            // Debug wall contact loss with more detail
+            if (isWallRunning && !isWallRight && !isWallLeft)
+            {
+                Debug.Log($"⚠️ WALL CONTACT LOST! Distance: {wallCheckDistance}, Layer: {wallRunLayer.value}");
+                Debug.Log($"Right rays: {rightWall1}/{rightWall2}/{rightWall3}, Left rays: {leftWall1}/{leftWall2}/{leftWall3}");
+                
+                // Try raycast without layer mask to see if wall is there but wrong layer
+                bool anyWallRight = Physics.Raycast(rayStart, transform.right, wallCheckDistance);
+                bool anyWallLeft = Physics.Raycast(rayStart, -transform.right, wallCheckDistance);
+                if (anyWallRight || anyWallLeft)
+                {
+                    Debug.Log($"🔍 Wall detected without layer mask - check wallRunLayer setting!");
+                }
+            }
         }
         else
         {
@@ -591,31 +751,74 @@ public class PlayerController : MonoBehaviour
 
     private void HandleWallRunState()
     {
-        // Check if wall run timer has expired first
+        // Check if wall run timer has expired first - this is the PRIMARY condition
         if (isWallRunning)
         {
             wallRunTimer += Time.deltaTime;
-            Debug.Log($"Wall run timer: {wallRunTimer:F2} / {maxWallRunTime}");
+            
             if (wallRunTimer >= maxWallRunTime)
             {
-                Debug.Log("Timer expired - stopping wall run!");
-                wallRunExpired = true;
-                wallRunExpiredTimer = 0f;
+                Debug.Log($"⏰ WALL RUN TIMER EXPIRED! {wallRunTimer:F2}s >= {maxWallRunTime:F2}s - FORCING STOP!");
                 StopWallRun();
                 return;
             }
         }
 
-        // Only allow wall run if airborne and touching a wall and not in cooldown
-        bool canWallRun = !isGrounded && (isWallRight || isWallLeft) && !justWallJumped && !wallRunExpired;
+        // Enhanced wall detection with contact tolerance
+        bool hasWallContact = isWallRight || isWallLeft;
+        bool canWallRun = !isGrounded && hasWallContact && 
+                         (!justWallJumped || wallJumpCooldownTimer > wallJumpChainCooldown * 0.5f);
+
+        // Handle wall contact lost timer - ONLY stop if tolerance exceeded AND timer hasn't expired
+        if (isWallRunning)
+        {
+            if (!hasWallContact)
+            {
+                wallContactLostTimer += Time.deltaTime;
+                
+                // Only log occasionally to avoid spam
+                if (Mathf.FloorToInt(wallContactLostTimer * 10) != Mathf.FloorToInt((wallContactLostTimer - Time.deltaTime) * 10))
+                {
+                    Debug.Log($"⚠️ Wall contact lost for {wallContactLostTimer:F2}s/{wallContactTolerance:F2}s (Timer: {wallRunTimer:F1}s/{maxWallRunTime:F1}s)");
+                }
+                
+                // Only stop if tolerance exceeded AND we still have wall run time left
+                if (wallContactLostTimer >= wallContactTolerance)
+                {
+                    Debug.Log($"❌ Wall contact lost too long - stopping wall run! Contact lost: {wallContactLostTimer:F2}s, Wall run timer: {wallRunTimer:F2}s/{maxWallRunTime:F2}s");
+                    StopWallRun();
+                    return;
+                }
+            }
+            else
+            {
+                // Reset contact lost timer when wall contact is restored
+                if (wallContactLostTimer > 0f)
+                {
+                    Debug.Log($"✅ Wall contact restored after {wallContactLostTimer:F2}s (Timer: {wallRunTimer:F1}s/{maxWallRunTime:F1}s)");
+                    wallContactLostTimer = 0f;
+                }
+            }
+        }
+
+        // Start wall run
         if (canWallRun && !isWallRunning)
         {
+            Debug.Log($"🏃 Starting wall run - Wall: R{isWallRight} L{isWallLeft} - Duration: {maxWallRunTime}s");
             StartWallRun();
         }
-        else if (!canWallRun && isWallRunning)
+        // Stop wall run due to ground contact (immediate stop - this overrides timer)
+        else if (isGrounded && isWallRunning)
         {
-            Debug.Log("Can't wall run anymore - stopping!");
+            Debug.Log($"❌ Stopping wall run - touched ground! Timer: {wallRunTimer:F2}s/{maxWallRunTime:F2}s");
             StopWallRun();
+        }
+        
+        // Debug log every half second during wall run
+        if (isWallRunning && Mathf.FloorToInt(wallRunTimer * 2) != Mathf.FloorToInt((wallRunTimer - Time.deltaTime) * 2))
+        {
+            float timeLeft = maxWallRunTime - wallRunTimer;
+            Debug.Log($"🏃 Wall running: {wallRunTimer:F1}s/{maxWallRunTime:F1}s (⏳{timeLeft:F1}s left) - Contact: R{isWallRight} L{isWallLeft} - Lost: {wallContactLostTimer:F2}s");
         }
     }
 
@@ -640,10 +843,31 @@ public class PlayerController : MonoBehaviour
     {
         isWallRunning = false;
         wallRunTimer = 0f;
+        wallContactLostTimer = 0f; // Reset contact lost timer
         Debug.Log("Wall run stopped!");
 
         // When wall run stops, apply normal gravity to make player fall
         // Don't reset velocity.y to 0 - let them fall naturally
+    }
+
+    // Additional debug methods for testing
+    private void DebugForceStopWallRun()
+    {
+        if (isWallRunning)
+        {
+            Debug.Log($"🔧 FORCE STOPPING WALL RUN - Timer was: {wallRunTimer:F2}s/{maxWallRunTime:F2}s");
+            StopWallRun();
+        }
+    }
+
+    // Safety check to ensure wall run doesn't exceed max time
+    private void SafetyCheckWallRunTimer()
+    {
+        if (isWallRunning && wallRunTimer > maxWallRunTime + 0.1f) // Small buffer for frame timing
+        {
+            Debug.LogWarning($"⚠️ SAFETY: Wall run exceeded max time! {wallRunTimer:F2}s > {maxWallRunTime:F2}s - Force stopping!");
+            StopWallRun();
+        }
     }
 
     private void WallRunningMovement()
@@ -684,8 +908,10 @@ public class PlayerController : MonoBehaviour
         wallRunTimer = 0f;
         justWallJumped = false;
         wallJumpCooldownTimer = 0f;
-        wallRunExpired = false;
-        wallRunExpiredTimer = 0f;
+        consecutiveWallJumps = 0;
+        wallJumpGraceTimer = 0f;
+        wallJumpMovementTimer = 0f;
+        wallContactLostTimer = 0f;
 
         // Reset sliding state
         if (isSliding)
@@ -736,6 +962,14 @@ public class PlayerController : MonoBehaviour
         Debug.Log($"Can Coyote Jump: {!isGrounded && coyoteTimeCounter > 0f && !jumpStarted}");
         Debug.Log($"Can Regular Jump: {isGrounded && !jumpStarted}");
         Debug.Log($"Has Jump Input: {jumpBufferCounter > 0f}");
+        Debug.Log($"=== WALL JUMP CHAIN DEBUG ===");
+        Debug.Log($"Consecutive Wall Jumps: {consecutiveWallJumps}/{maxConsecutiveWallJumps}");
+        Debug.Log($"Wall Jump Grace Timer: {wallJumpGraceTimer:F3}s");
+        Debug.Log($"Wall Jump Movement Timer: {wallJumpMovementTimer:F3}s/{wallJumpMovementDuration:F3}s");
+        Debug.Log($"Just Wall Jumped: {justWallJumped}");
+        Debug.Log($"Wall Right: {isWallRight}, Wall Left: {isWallLeft}");
+        Debug.Log($"Can Chain Wall Jump: {allowWallJumpChaining && consecutiveWallJumps < maxConsecutiveWallJumps}");
+        Debug.Log($"Wall Run Timer: {wallRunTimer:F2}s/{maxWallRunTime:F2}s");
         Debug.Log($"========================");
     }
 }
