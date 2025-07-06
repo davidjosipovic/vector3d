@@ -94,6 +94,12 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
+        // Debug keys for testing
+        if (Input.GetKeyDown(KeyCode.T))
+        {
+            TestCoyoteTime();
+        }
+        
         if (justWallJumped)
         {
             wallJumpCooldownTimer += Time.deltaTime;
@@ -142,9 +148,12 @@ public class PlayerController : MonoBehaviour
             wallRunExpiredTimer = 0f;
             isWallRunning = false;
             wallRunTimer = 0f;
+            coyoteTimeCounter = 0f; // Reset coyote time after wall jump
 
             if (animator != null)
                 animator.SetBool("IsJumping", true);
+                
+            Debug.Log("Wall jump executed - coyote time reset");
         }
 
 
@@ -178,35 +187,59 @@ public class PlayerController : MonoBehaviour
     private void GroundCheck()
     {
         Vector3 rayOrigin = transform.position + Vector3.up * 0.1f;
+        bool wasGrounded = isGrounded;
         isGrounded = Physics.Raycast(rayOrigin, Vector3.down, groundCheckDistance);
 
         if (isGrounded)
         {
+            // Reset coyote time when grounded
             coyoteTimeCounter = coyoteTimeDuration;
 
             if (velocity.y < 0)
                 velocity.y = -2f; // Small negative to keep grounded
 
-            // Reset jumping animation when landing (for both regular jumps and wall jumps)
-            if (jumpStarted || animator.GetBool("IsJumping"))
+            // Reset jumping animation when landing (only if we were actually jumping)
+            if ((jumpStarted || animator.GetBool("IsJumping")) && velocity.y <= 0f)
             {
                 jumpStarted = false;
                 if (animator != null)
                     animator.SetBool("IsJumping", false);
+                    
+                Debug.Log("Jump animation reset - player landed");
             }
         }
         else
         {
+            // Only decrease coyote time if we were previously grounded
+            if (wasGrounded)
+            {
+                Debug.Log($"Player left ground - coyote time started: {coyoteTimeCounter:F3}s");
+            }
             coyoteTimeCounter -= Time.deltaTime;
         }
     }
 
     private void HandleJumpInput()
     {
-        if ((isGrounded || coyoteTimeCounter > 0f) && Input.GetKeyDown(KeyCode.Space) && !isSliding && !jumpStarted)
+        bool canJump = (isGrounded || coyoteTimeCounter > 0f) && !isSliding && !jumpStarted;
+        
+        if (canJump && Input.GetKeyDown(KeyCode.Space))
         {
             velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
             jumpStarted = true;
+            
+            // Log for debugging coyote jumps vs regular jumps
+            bool isCoyoteJump = !isGrounded && coyoteTimeCounter > 0f;
+            if (isCoyoteJump)
+            {
+                Debug.Log($"Coyote jump executed! Coyote time remaining: {coyoteTimeCounter:F3}s");
+            }
+            else
+            {
+                Debug.Log("Regular jump executed.");
+            }
+            
+            // Reset coyote time after any jump
             coyoteTimeCounter = 0f;
 
             if (animator != null)
@@ -273,6 +306,22 @@ public class PlayerController : MonoBehaviour
             animator.SetFloat("Speed", speed);
             animator.SetBool("IsSliding", isSliding);
             animator.SetBool("IsClimbing", isClimbing);
+            
+            // Only force reset jump animation if grounded AND not just started jumping AND falling
+            // This prevents interference with coyote jumps
+            if (isGrounded && !jumpStarted && animator.GetBool("IsJumping") && velocity.y <= 0f)
+            {
+                animator.SetBool("IsJumping", false);
+                Debug.Log("Jump animation force reset in UpdateAnimations - player landed");
+            }
+            
+            // Reset jump animation if player is in wall run or climbing (special states)
+            if ((isWallRunning || isClimbing) && animator.GetBool("IsJumping"))
+            {
+                animator.SetBool("IsJumping", false);
+                jumpStarted = false; // Also reset jump started flag
+                Debug.Log("Jump animation reset - player in special state (wall run/climbing)");
+            }
         }
     }
 
@@ -429,6 +478,9 @@ public class PlayerController : MonoBehaviour
         isClimbing = true;
         controller.enabled = false;
         velocity = Vector3.zero;
+        
+        // Reset jump state when starting climb
+        jumpStarted = false;
 
         Vector3 startPos = climbStartPos;
         Vector3 endPos = climbEndPos;
@@ -446,6 +498,8 @@ public class PlayerController : MonoBehaviour
             animator.SetBool("IsSliding", false);
             animator.SetBool("IsJumping", false);
             animator.SetFloat("Speed", 0f);
+            
+            Debug.Log("Jump animation reset - climbing started");
         }
 
         Debug.Log($"Climb duration: {duration:F2}s, Distance: {distance:F2}m");
@@ -520,9 +574,16 @@ public class PlayerController : MonoBehaviour
         isWallRunning = true;
         wallRunTimer = 0f;
         velocity.y = 0f; // Reset vertical velocity for smooth wall run
+        
+        // Reset jump state when starting wall run
+        jumpStarted = false;
+        
         Debug.Log("Wall run started!");
         if (animator != null)
+        {
             animator.SetBool("IsJumping", false);
+            Debug.Log("Jump animation reset - wall run started");
+        }
     }
 
     private void StopWallRun()
@@ -611,5 +672,16 @@ public class PlayerController : MonoBehaviour
         Debug.Log("Player state reset for checkpoint respawn");
     }
 
-
+    // Debug method to test coyote time behavior (called via T key)
+    public void TestCoyoteTime()
+    {
+        Debug.Log($"=== COYOTE TIME DEBUG ===");
+        Debug.Log($"Is Grounded: {isGrounded}");
+        Debug.Log($"Coyote Time Counter: {coyoteTimeCounter:F3}s / {coyoteTimeDuration:F3}s");
+        Debug.Log($"Jump Started: {jumpStarted}");
+        Debug.Log($"Is Jumping (Animation): {(animator != null ? animator.GetBool("IsJumping") : "No Animator")}");
+        Debug.Log($"Velocity Y: {velocity.y:F2}");
+        Debug.Log($"Can Coyote Jump: {!isGrounded && coyoteTimeCounter > 0f && !jumpStarted}");
+        Debug.Log($"========================");
+    }
 }
