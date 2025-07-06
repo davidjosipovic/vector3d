@@ -393,12 +393,27 @@ public class PlayerController : MonoBehaviour
             Collider wallCollider = climbableTransform.GetComponent<Collider>();
             if (wallCollider != null)
             {
-                // Start climb at player's current X,Z and current Y to avoid teleportation
-                climbStartPos = transform.position;
+                // Proverava da li je player dovoljno blizu dna zida da počne penjanje
+                Vector3 playerPos = transform.position;
+                Vector3 wallBottom = wallCollider.bounds.min;
+                Vector3 wallTop = wallCollider.bounds.max;
+                
+                // Ako je player previše blizu vrha zida, ne počinji penjanje
+                float distanceFromTop = wallTop.y - playerPos.y;
+                if (distanceFromTop < 1f) // Manje od 1 metar od vrha
+                {
+                    Debug.Log("Player too close to wall top, skipping climb");
+                    return;
+                }
+                
+                // Početna pozicija je na dnu zida, ali sa player-ovim X i Z koordinatama
+                climbStartPos = new Vector3(playerPos.x, wallBottom.y, playerPos.z);
+                
+                // Krajnja pozicija je na vrhu zida sa offsetom
+                float wallTopY = wallTop.y + climbOffsetAboveWall;
+                climbEndPos = new Vector3(playerPos.x, wallTopY, playerPos.z);
 
-                float wallTopY = wallCollider.bounds.max.y + climbOffsetAboveWall;
-                climbEndPos = new Vector3(transform.position.x, wallTopY, transform.position.z);
-
+                Debug.Log($"Climbing - Wall bottom: {wallBottom.y}, Wall top: {wallTop.y}");
                 Debug.Log($"Starting climb from Y={climbStartPos.y} to Y={climbEndPos.y}");
                 StartCoroutine(ClimbWall());
             }
@@ -418,6 +433,9 @@ public class PlayerController : MonoBehaviour
         Vector3 startPos = climbStartPos;
         Vector3 endPos = climbEndPos;
 
+        // Odmah postavi player-a na početnu poziciju (dno zida)
+        transform.position = startPos;
+
         float distance = Vector3.Distance(startPos, endPos);
         float duration = distance / climbSpeed;
         float elapsed = 0f;
@@ -430,15 +448,17 @@ public class PlayerController : MonoBehaviour
             animator.SetFloat("Speed", 0f);
         }
 
-        transform.position = startPos;
+        Debug.Log($"Climb duration: {duration:F2}s, Distance: {distance:F2}m");
 
         while (elapsed < duration)
         {
-            transform.position = Vector3.Lerp(startPos, endPos, elapsed / duration);
+            float t = elapsed / duration;
+            transform.position = Vector3.Lerp(startPos, endPos, t);
             elapsed += Time.deltaTime;
             yield return null;
         }
 
+        // Osiguraj da je player tačno na krajnjoj poziciji
         transform.position = endPos;
 
         isClimbing = false;
@@ -446,6 +466,8 @@ public class PlayerController : MonoBehaviour
 
         if (animator != null)
             animator.SetBool("IsClimbing", false);
+            
+        Debug.Log($"Climb completed at Y={transform.position.y}");
     }
 
     private void CheckForWalls()
