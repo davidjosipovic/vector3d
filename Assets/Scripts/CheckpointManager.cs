@@ -98,16 +98,16 @@ public class CheckpointManager : MonoBehaviour
             player.transform.position = GetRespawnPosition();
             player.transform.rotation = GetRespawnRotation();
             
-            // Reset camera position to prevent glitching
-            ResetCinemachineCamera();
-            
-            // Reset player velocity
+            // Reset player velocity first
             PlayerController playerController = player.GetComponent<PlayerController>();
             if (playerController != null)
             {
                 // Reset any ongoing states
                 playerController.ResetPlayerState();
             }
+            
+            // Reset camera with a small delay to ensure player is positioned
+            StartCoroutine(ResetCameraAfterRespawn());
             
             // Re-enable CharacterController
             if (controller != null)
@@ -154,6 +154,41 @@ public class CheckpointManager : MonoBehaviour
         }
     }
     
+    private System.Collections.IEnumerator ResetCameraAfterRespawn()
+    {
+        // Wait one frame for player to be positioned
+        yield return null;
+        
+        // Find Cinemachine FreeLook camera
+        var freeLookCamera = FindObjectOfType<Cinemachine.CinemachineFreeLook>();
+        if (freeLookCamera != null)
+        {
+            // Reset the camera axes to default position (behind player)
+            freeLookCamera.m_XAxis.Value = 0f; // Behind player (0 degrees)
+            freeLookCamera.m_YAxis.Value = 0.5f; // Middle height
+            
+            // Force camera to update immediately
+            freeLookCamera.PreviousStateIsValid = false;
+            freeLookCamera.InternalUpdateCameraState(Vector3.up, Time.deltaTime);
+            
+            if (showDebugInfo)
+                Debug.Log($"Cinemachine FreeLook reset - X: {freeLookCamera.m_XAxis.Value}, Y: {freeLookCamera.m_YAxis.Value}");
+        }
+        
+        // Wait another frame and do a second reset to ensure it sticks
+        yield return null;
+        
+        if (freeLookCamera != null)
+        {
+            freeLookCamera.m_XAxis.Value = 0f;
+            freeLookCamera.m_YAxis.Value = 0.5f;
+            freeLookCamera.PreviousStateIsValid = false;
+            
+            if (showDebugInfo)
+                Debug.Log("Second camera reset completed");
+        }
+    }
+    
     private void ResetCinemachineCamera()
     {
         // Find Cinemachine FreeLook camera
@@ -188,4 +223,36 @@ public class CheckpointManager : MonoBehaviour
                 Debug.Log("Camera follow reset for respawn");
         }
     }
+    
+    // Manual camera reset for testing - call this with a key press
+    public void ManualCameraReset()
+    {
+        var freeLookCamera = FindObjectOfType<Cinemachine.CinemachineFreeLook>();
+        if (freeLookCamera != null)
+        {
+            freeLookCamera.m_XAxis.Value = 0f; // Behind player
+            freeLookCamera.m_YAxis.Value = 0.5f; // Middle height
+            freeLookCamera.PreviousStateIsValid = false;
+            
+            if (showDebugInfo)
+                Debug.Log("Manual camera reset - camera positioned behind player");
+        }
+    }
+    
+    // Add this for testing
+    private void Update()
+    {
+        // Press R to manually reset camera
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            ManualCameraReset();
+        }
+        
+        // Press T to test respawn
+        if (Input.GetKeyDown(KeyCode.T))
+        {
+            RespawnPlayer();
+        }
+    }
+
 }
