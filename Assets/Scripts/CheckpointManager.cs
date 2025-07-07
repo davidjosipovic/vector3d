@@ -94,6 +94,9 @@ public class CheckpointManager : MonoBehaviour
                 LevelTimer.Instance.OnPlayerRespawn();
             }
             
+            // Reset all moving platforms to their starting positions
+            ResetAllMovingPlatforms();
+            
             // Disable CharacterController temporarily for teleportation
             CharacterController controller = player.GetComponent<CharacterController>();
             if (controller != null)
@@ -149,6 +152,19 @@ public class CheckpointManager : MonoBehaviour
         }
     }
     
+    // Reset all moving platforms in the level
+    public void ResetAllMovingPlatforms()
+    {
+        MovingPlatform[] movingPlatforms = FindObjectsOfType<MovingPlatform>();
+        foreach (MovingPlatform platform in movingPlatforms)
+        {
+            platform.ResetToStartingPosition();
+        }
+        
+        if (showDebugInfo && movingPlatforms.Length > 0)
+            Debug.Log($"Reset {movingPlatforms.Length} moving platforms to starting positions");
+    }
+
     private void OnGUI()
     {
         if (showDebugInfo)

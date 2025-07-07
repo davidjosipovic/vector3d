@@ -91,6 +91,14 @@ public class PlayerController : MonoBehaviour
     private float coyoteTimeCounter = 0f;
     private float jumpBufferCounter = 0f;
 
+    [Header("Slow Down Settings")]
+    public float slowDownSpeedMultiplier = 0.3f;  // Speed when slowing down (30% of normal)
+    public float slowDownAnimationSpeed = 0.5f;   // Animation speed when slowing down
+    public bool canSlowDownWhileSliding = false;  // Allow slow down during slide
+    
+    private bool isSlowingDown = false;
+    private float originalAnimatorSpeed = 1f;     // Store original animator speed
+
     void Start()
     {
         controller = GetComponent<CharacterController>();
@@ -98,10 +106,12 @@ public class PlayerController : MonoBehaviour
             Debug.LogError("CharacterController component missing from player.");
 
         originalHeight = controller.height;
-        originalCenter = controller.center;
+        originalCenter = controller.center; 
 
         if (animator == null)
             Debug.LogWarning("Animator not assigned.");
+        else
+            originalAnimatorSpeed = animator.speed; // Store original animator speed
 
         if (visualModel == null)
             Debug.LogWarning("VisualModel not assigned.");
@@ -310,6 +320,9 @@ public class PlayerController : MonoBehaviour
 
         HandleSlideInput();
 
+        // Handle slow down input
+        HandleSlowDownInput();
+
         UpdateAnimations();
     }
 
@@ -445,6 +458,11 @@ public class PlayerController : MonoBehaviour
         else
         {
             float currentSpeed = isSliding ? slideSpeed : runSpeed;
+            
+            // Apply slow down multiplier if slowing down
+            if (isSlowingDown)
+                currentSpeed *= slowDownSpeedMultiplier;
+                
             Vector3 move = transform.forward * currentSpeed + transform.right * horizontalInput * sideSpeed;
 
             // Add vertical velocity
@@ -456,6 +474,7 @@ public class PlayerController : MonoBehaviour
 
     private void HandleSlideInput()
     {
+        // Handle slide input (S key down)
         if ((isGrounded || coyoteTimeCounter > 0f) && Input.GetKeyDown(KeyCode.S) && !isSliding && !isClimbing)
         {
             StartSlide();
@@ -469,12 +488,36 @@ public class PlayerController : MonoBehaviour
                 EndSlide();
         }
     }
+    
+    private void HandleSlowDownInput()
+    {
+        // Handle slow down input (C key hold, not during climb)
+        bool shouldSlowDown = Input.GetKey(KeyCode.C) && !isClimbing;
+        
+        // Only allow slow down if setting permits it during slide, or if not sliding
+        if (!canSlowDownWhileSliding && isSliding)
+            shouldSlowDown = false;
+            
+        if (shouldSlowDown && !isSlowingDown)
+        {
+            StartSlowDown();
+        }
+        else if (!shouldSlowDown && isSlowingDown)
+        {
+            EndSlowDown();
+        }
+    }
 
     private void UpdateAnimations()
     {
         if (animator != null)
         {
             float speed = isSliding ? slideSpeed : runSpeed;
+            
+            // Apply slow down multiplier to animation speed if slowing down
+            if (isSlowingDown)
+                speed *= slowDownSpeedMultiplier;
+                
             animator.SetFloat("Speed", speed);
             animator.SetBool("IsSliding", isSliding);
             animator.SetBool("IsClimbing", isClimbing);
@@ -918,6 +961,12 @@ public class PlayerController : MonoBehaviour
         {
             EndSlide();
         }
+        
+        // Reset slow down state
+        if (isSlowingDown)
+        {
+            EndSlowDown();
+        }
 
         // Reset climbing state
         if (isClimbing)
@@ -971,5 +1020,31 @@ public class PlayerController : MonoBehaviour
         Debug.Log($"Can Chain Wall Jump: {allowWallJumpChaining && consecutiveWallJumps < maxConsecutiveWallJumps}");
         Debug.Log($"Wall Run Timer: {wallRunTimer:F2}s/{maxWallRunTime:F2}s");
         Debug.Log($"========================");
+    }
+
+    private void StartSlowDown()
+    {
+        isSlowingDown = true;
+        
+        // Slow down the animator
+        if (animator != null)
+        {
+            animator.speed = slowDownAnimationSpeed;
+        }
+        
+        Debug.Log($"Slow down started - Speed: {slowDownSpeedMultiplier * 100}%, Animation: {slowDownAnimationSpeed * 100}%");
+    }
+    
+    private void EndSlowDown()
+    {
+        isSlowingDown = false;
+        
+        // Restore normal animator speed
+        if (animator != null)
+        {
+            animator.speed = originalAnimatorSpeed;
+        }
+        
+        Debug.Log("Slow down ended - Normal speed restored");
     }
 }

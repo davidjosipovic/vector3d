@@ -811,4 +811,52 @@ public class MovingPlatform : MonoBehaviour
             
         return fallback;
     }
+    
+    /// <summary>
+    /// Reset platform to its starting position and state (called on player respawn)
+    /// </summary>
+    public void ResetToStartingPosition()
+    {
+        // Stop any current movement
+        isMoving = false;
+        isWaiting = false;
+        waitTimer = 0f;
+        journeyTime = 0f;
+        
+        // Reset movement direction and position based on starting configuration
+        if (startFromCurrentPosition)
+        {
+            // If the platform was set to start from current position, 
+            // we need to restore it to where it was originally placed
+            Vector3 originalStartPos = useObjectSurface ? AdjustPositionToSurface(pointA.position) : pointA.position;
+            transform.position = originalStartPos;
+            
+            // Recalculate starting direction from this position
+            DetermineStartingDirection();
+        }
+        else
+        {
+            // Original behavior - reset to Point A
+            Vector3 startPos = useObjectSurface ? AdjustPositionToSurface(pointA.position) : pointA.position;
+            transform.position = startPos;
+            startPosition = startPos;
+            targetPosition = useObjectSurface ? AdjustPositionToSurface(pointB.position) : pointB.position;
+            movingToB = true;
+        }
+        
+        // Clear any carried objects
+        if (carriedObject != null)
+        {
+            carriedObject = null;
+        }
+        
+        // Restart movement if auto-start is enabled
+        if (autoStart)
+        {
+            StartMoving();
+        }
+        
+        if (showDebugInfo)
+            Debug.Log($"MovingPlatform '{gameObject.name}' reset to starting position: {transform.position}");
+    }
 }
