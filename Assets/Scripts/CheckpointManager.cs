@@ -124,13 +124,9 @@ public class CheckpointManager : MonoBehaviour
             {
                 controller.enabled = true;
             }
-            
-            if (showDebugInfo)
-                Debug.Log($"Player respawned at: {GetRespawnPosition()}");
         }
         else
         {
-            Debug.LogError("Player not found for respawn!");
         }
     }
     
@@ -160,23 +156,8 @@ public class CheckpointManager : MonoBehaviour
         {
             platform.ResetToStartingPosition();
         }
-        
-        if (showDebugInfo && movingPlatforms.Length > 0)
-            Debug.Log($"Reset {movingPlatforms.Length} moving platforms to starting positions");
     }
 
-    private void OnGUI()
-    {
-        if (showDebugInfo)
-        {
-            GUI.Label(new Rect(10, 100, 300, 20), $"Has Checkpoint: {hasCheckpoint}");
-            if (hasCheckpoint)
-            {
-                GUI.Label(new Rect(10, 120, 300, 20), $"Checkpoint: {currentCheckpointPosition}");
-            }
-        }
-    }
-    
     private System.Collections.IEnumerator ResetCameraAfterRespawn()
     {
         // Wait one frame for player to be positioned
@@ -187,18 +168,14 @@ public class CheckpointManager : MonoBehaviour
         if (freeLookCamera != null)
         {
             // Reset the camera axes to default position (behind player)
-            freeLookCamera.m_XAxis.Value = 0f; // Behind player (0 degrees)
-            freeLookCamera.m_YAxis.Value = 0.5f; // Middle height
+            freeLookCamera.m_XAxis.Value = 0f;
+            freeLookCamera.m_YAxis.Value = 0.5f; 
             
-            // Force camera to update immediately
+         
             freeLookCamera.PreviousStateIsValid = false;
             freeLookCamera.InternalUpdateCameraState(Vector3.up, Time.deltaTime);
-            
-            if (showDebugInfo)
-                Debug.Log($"Cinemachine FreeLook reset - X: {freeLookCamera.m_XAxis.Value}, Y: {freeLookCamera.m_YAxis.Value}");
         }
         
-        // Wait another frame and do a second reset to ensure it sticks
         yield return null;
         
         if (freeLookCamera != null)
@@ -206,102 +183,68 @@ public class CheckpointManager : MonoBehaviour
             freeLookCamera.m_XAxis.Value = 0f;
             freeLookCamera.m_YAxis.Value = 0.5f;
             freeLookCamera.PreviousStateIsValid = false;
-            
-            if (showDebugInfo)
-                Debug.Log("Second camera reset completed");
         }
     }
     
     private void ResetCinemachineCamera()
     {
-        // Find Cinemachine FreeLook camera
         var freeLookCamera = FindObjectOfType<Cinemachine.CinemachineFreeLook>();
         if (freeLookCamera != null)
         {
-            // Force immediate camera update without smooth transition
             freeLookCamera.PreviousStateIsValid = false;
             
-            // Reset camera state to prevent following player into the abyss
             freeLookCamera.ForceCameraPosition(freeLookCamera.transform.position, freeLookCamera.transform.rotation);
-            
-            if (showDebugInfo)
-                Debug.Log("Cinemachine FreeLook camera reset for respawn");
         }
         
-        // Fallback: try to find any Cinemachine virtual camera
         var virtualCamera = FindObjectOfType<Cinemachine.CinemachineVirtualCamera>();
         if (virtualCamera != null)
         {
             virtualCamera.PreviousStateIsValid = false;
-            if (showDebugInfo)
-                Debug.Log("Cinemachine Virtual camera reset for respawn");
         }
         
-        // Fallback: try custom camera follow
         CameraFollow cameraFollow = FindObjectOfType<CameraFollow>();
         if (cameraFollow != null)
         {
             cameraFollow.ResetCameraPosition();
-            if (showDebugInfo)
-                Debug.Log("Camera follow reset for respawn");
         }
     }
     
-    // Manual camera reset for testing - call this with a key press
     public void ManualCameraReset()
     {
         var freeLookCamera = FindObjectOfType<Cinemachine.CinemachineFreeLook>();
         if (freeLookCamera != null)
         {
-            freeLookCamera.m_XAxis.Value = 0f; // Behind player
-            freeLookCamera.m_YAxis.Value = 0.5f; // Middle height
+            freeLookCamera.m_XAxis.Value = 0f;
+            freeLookCamera.m_YAxis.Value = 0.5f;
             freeLookCamera.PreviousStateIsValid = false;
-            
-            if (showDebugInfo)
-                Debug.Log("Manual camera reset - camera positioned behind player");
         }
     }
     
-    // Add this for testing
     private void Update()
     {
-        // Press R to manually reset camera
         if (Input.GetKeyDown(KeyCode.R))
         {
             ManualCameraReset();
         }
         
-        // Press T to test respawn
         if (Input.GetKeyDown(KeyCode.T))
         {
             RespawnPlayer();
         }
         
-        // Press L to manually fix lighting
         if (Input.GetKeyDown(KeyCode.L))
         {
             FixSceneLighting();
-            Debug.Log("Manual lighting fix applied!");
         }
     }
     
-    // Called when a new level starts to ensure clean state
     public void OnLevelStart()
     {
-        // Reset checkpoint state for new level
         hasCheckpoint = false;
         
-        // Set initial checkpoint to default spawn if available
         if (defaultSpawnPoint != null)
         {
             SetCurrentCheckpoint(defaultSpawnPoint.position, defaultSpawnPoint.rotation);
-            if (showDebugInfo)
-                Debug.Log($"Level started - default checkpoint set at: {defaultSpawnPoint.position}");
-        }
-        else
-        {
-            if (showDebugInfo)
-                Debug.LogWarning("No default spawn point set for new level!");
         }
     }
     
@@ -318,41 +261,30 @@ public class CheckpointManager : MonoBehaviour
     
     private void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
     {
-        // Reset instance reference to prevent conflicts
         if (Instance == this)
         {
             OnLevelStart();
             
-            // Fix lighting issues when loading new scene
             FixSceneLighting();
         }
     }
     
     private void FixSceneLighting()
     {
-        // Try to find existing SceneLightingFix component
         SceneLightingFix lightingFix = FindObjectOfType<SceneLightingFix>();
         
         if (lightingFix != null)
         {
-            // Use existing component
             lightingFix.FixLighting();
         }
         else
         {
-            // Create temporary lighting fix
             GameObject tempFix = new GameObject("TempLightingFix");
             SceneLightingFix tempComponent = tempFix.AddComponent<SceneLightingFix>();
             
-            // Fix lighting then destroy the temporary object
             tempComponent.FixLighting();
             
-            // Destroy after a short delay to ensure fix is applied
             Destroy(tempFix, 1f);
         }
-        
-        if (showDebugInfo)
-            Debug.Log("CheckpointManager: Scene lighting fix applied");
     }
-
 }

@@ -36,7 +36,7 @@ public class FallDetector : MonoBehaviour
     {
         Debug.Log("Player fell! Respawning at checkpoint...");
         
-        // Optional: Disable player input during fall
+        
         PlayerController playerController = GetComponent<PlayerController>();
         if (playerController != null)
         {
@@ -45,10 +45,10 @@ public class FallDetector : MonoBehaviour
         
         yield return new WaitForSeconds(respawnDelay);
         
-        // Respawn at checkpoint
+      
         CheckpointManager.Instance.RespawnPlayer();
         
-        // Re-enable player input
+      
         if (playerController != null)
         {
             playerController.enabled = true;
@@ -64,7 +64,7 @@ public class FallDetector : MonoBehaviour
         SceneManager.LoadScene(currentScene.buildIndex);
     }
     
-    // Reset fall trigger when player gets back to safe ground
+  
     private void OnTriggerExit(Collider other)
     {
         if (other.CompareTag("Player"))

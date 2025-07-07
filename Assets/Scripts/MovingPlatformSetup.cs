@@ -49,7 +49,7 @@ public class MovingPlatformSetup : MonoBehaviour
         CreatePoints();
         AssignPointsToPlatform();
         
-        Debug.Log($"✅ Moving platform '{targetPlatform.gameObject.name}' setup completed!");
+        Debug.Log($"Moving platform '{targetPlatform.gameObject.name}' setup completed!");
     }
     
     [ContextMenu("Create Points")]
@@ -57,7 +57,6 @@ public class MovingPlatformSetup : MonoBehaviour
     {
         Vector3 basePosition = useRelativePositions ? transform.position : Vector3.zero;
         
-        // Create Point A
         if (generatedPointA == null)
         {
             GameObject pointAObj = new GameObject("Point A");
@@ -65,7 +64,6 @@ public class MovingPlatformSetup : MonoBehaviour
             generatedPointA.SetParent(transform);
         }
         
-        // Create Point B
         if (generatedPointB == null)
         {
             GameObject pointBObj = new GameObject("Point B");
@@ -73,7 +71,6 @@ public class MovingPlatformSetup : MonoBehaviour
             generatedPointB.SetParent(transform);
         }
         
-        // Set positions
         if (useRelativePositions)
         {
             generatedPointA.position = basePosition;
@@ -85,7 +82,6 @@ public class MovingPlatformSetup : MonoBehaviour
             generatedPointB.position = pointB.position;
         }
         
-        // Add visual indicators
         AddPointVisuals(generatedPointA, Color.green);
         AddPointVisuals(generatedPointB, Color.red);
         
@@ -94,21 +90,18 @@ public class MovingPlatformSetup : MonoBehaviour
     
     private void AddPointVisuals(Transform point, Color color)
     {
-        // Remove existing visual if any
         Transform existing = point.Find("Visual");
         if (existing != null)
         {
             DestroyImmediate(existing.gameObject);
         }
         
-        // Create visual indicator
         GameObject visual = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         visual.name = "Visual";
         visual.transform.SetParent(point);
         visual.transform.localPosition = Vector3.zero;
         visual.transform.localScale = Vector3.one * 0.5f;
         
-        // Set color
         Renderer renderer = visual.GetComponent<Renderer>();
         if (renderer != null)
         {
@@ -119,7 +112,6 @@ public class MovingPlatformSetup : MonoBehaviour
             renderer.material = mat;
         }
         
-        // Remove collider to avoid interference
         Collider col = visual.GetComponent<Collider>();
         if (col != null)
         {
@@ -186,28 +178,23 @@ public class MovingPlatformSetup : MonoBehaviour
         }
     }
     
-    // Gizmos for visualization
     private void OnDrawGizmos()
     {
         if (targetPlatform == null)
             return;
             
-        // Draw setup preview
         Vector3 basePos = useRelativePositions ? transform.position : Vector3.zero;
         Vector3 startPos = useRelativePositions ? basePos : pointA.position;
         Vector3 endPos = useRelativePositions ? basePos + moveDistance : pointB.position;
         
-        // Draw line
         Gizmos.color = Color.yellow;
         Gizmos.DrawLine(startPos, endPos);
         
-        // Draw points
         Gizmos.color = Color.green;
         Gizmos.DrawWireSphere(startPos, 0.3f);
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(endPos, 0.3f);
         
-        // Draw labels
         #if UNITY_EDITOR
         UnityEditor.Handles.Label(startPos + Vector3.up * 0.5f, "A");
         UnityEditor.Handles.Label(endPos + Vector3.up * 0.5f, "B");
@@ -216,14 +203,12 @@ public class MovingPlatformSetup : MonoBehaviour
     
     private void OnDrawGizmosSelected()
     {
-        // Draw more detailed information when selected
         if (useRelativePositions)
         {
             Gizmos.color = Color.cyan;
             Vector3 basePos = transform.position;
             Gizmos.DrawWireSphere(basePos, 0.2f);
             
-            // Draw distance vector
             Gizmos.color = Color.magenta;
             Gizmos.DrawRay(basePos, moveDistance);
         }
@@ -270,7 +255,6 @@ public class MovingPlatformSetupEditor : UnityEditor.Editor
         }
         UnityEditor.EditorGUILayout.EndHorizontal();
         
-        // Show platform info
         if (setup.targetPlatform != null)
         {
             UnityEditor.EditorGUILayout.Space();

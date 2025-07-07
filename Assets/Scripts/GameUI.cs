@@ -50,27 +50,12 @@ public class GameUI : MonoBehaviour
             levelTimer = FindObjectOfType<LevelTimer>();
         }
         
-        if (levelTimer == null)
-        {
-            Debug.LogError("GameUI: LevelTimer not found! Timer display will not work.");
-        }
-        else
-        {
-            Debug.Log("GameUI: LevelTimer found and connected.");
-        }
-        
         // Initialize UI state
         if (completionPanel != null)
             completionPanel.SetActive(false);
             
         if (timerPanel != null && !showTimerUI)
             timerPanel.SetActive(false);
-            
-        // Verify UI connections
-        if (timerText == null && timerTextTMP == null)
-        {
-            Debug.LogWarning("GameUI: No timer text components assigned!");
-        }
     }
     
     void Update()
@@ -110,12 +95,6 @@ public class GameUI : MonoBehaviour
         {
             timerTextTMP.text = timeString;
             timerTextTMP.color = timeColor;
-        }
-        
-        // Debug output every few seconds
-        if (Time.time % 2f < Time.deltaTime)
-        {
-            Debug.Log($"UI Timer Update: {timeString} (Running: {levelTimer.IsRunning()})");
         }
     }
     

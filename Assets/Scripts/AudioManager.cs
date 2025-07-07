@@ -62,8 +62,6 @@ public class AudioManager : MonoBehaviour
         // Postavi volume
         musicSource.volume = musicVolume;
         sfxSource.volume = sfxVolume;
-        
-        Debug.Log("AudioManager initialized successfully!");
     }
     
     public void PlayMainMenuMusic()
@@ -71,11 +69,6 @@ public class AudioManager : MonoBehaviour
         if (mainMenuMusic != null)
         {
             PlayMusic(mainMenuMusic);
-            Debug.Log("🎵 Playing main menu music");
-        }
-        else
-        {
-            Debug.LogWarning("Main menu music clip not assigned!");
         }
     }
     
@@ -84,11 +77,6 @@ public class AudioManager : MonoBehaviour
         if (gameplayMusic != null)
         {
             PlayMusic(gameplayMusic);
-            Debug.Log("🎵 Playing gameplay music");
-        }
-        else
-        {
-            Debug.LogWarning("Gameplay music clip not assigned!");
         }
     }
     
@@ -151,33 +139,28 @@ public class AudioManager : MonoBehaviour
     {
         musicSource.Stop();
         currentMusic = null;
-        Debug.Log("🔇 Music stopped");
     }
     
     public void PauseMusic()
     {
         musicSource.Pause();
-        Debug.Log("⏸️ Music paused");
     }
     
     public void ResumeMusic()
     {
         musicSource.UnPause();
-        Debug.Log("▶️ Music resumed");
     }
     
     public void SetMusicVolume(float volume)
     {
         musicVolume = Mathf.Clamp01(volume);
         musicSource.volume = musicVolume;
-        Debug.Log($"🔊 Music volume set to: {musicVolume:F2}");
     }
     
     public void SetSFXVolume(float volume)
     {
         sfxVolume = Mathf.Clamp01(volume);
         sfxSource.volume = sfxVolume;
-        Debug.Log($"🔊 SFX volume set to: {sfxVolume:F2}");
     }
     
     public void PlaySFX(AudioClip sfxClip)
@@ -188,37 +171,8 @@ public class AudioManager : MonoBehaviour
         }
     }
     
-    // Debug metode za testiranje
-    void Update()
-    {
-        // Debug keys za testiranje muzike
-        if (Input.GetKeyDown(KeyCode.F1))
-        {
-            PlayMainMenuMusic();
-        }
-        
-        if (Input.GetKeyDown(KeyCode.F2))
-        {
-            PlayGameplayMusic();
-        }
-        
-        if (Input.GetKeyDown(KeyCode.F3))
-        {
-            StopMusic();
-        }
-        
-        if (Input.GetKeyDown(KeyCode.F4))
-        {
-            if (musicSource.isPlaying)
-                PauseMusic();
-            else
-                ResumeMusic();
-        }
-    }
-    
     void OnValidate()
     {
-        // Ažuriraj volume u real-time u editoru
         if (musicSource != null)
             musicSource.volume = musicVolume;
         if (sfxSource != null)

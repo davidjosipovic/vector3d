@@ -17,14 +17,14 @@ public class Checkpoint : MonoBehaviour
     
     private void Start()
     {
-        // Make sure activated indicator is off at start
+    
         if (activatedIndicator != null)
             activatedIndicator.SetActive(false);
     }
     
     private void OnTriggerEnter(Collider other)
     {
-        // Check if player entered the checkpoint
+     
         if (other.CompareTag("Player") && !isActivated)
         {
             ActivateCheckpoint(other.transform.position);
@@ -35,25 +35,25 @@ public class Checkpoint : MonoBehaviour
     {
         isActivated = true;
         
-        // Set this as the current checkpoint in the manager
+    
         CheckpointManager.Instance.SetCurrentCheckpoint(transform.position, transform.rotation);
         
-        // Visual feedback
+   
         if (activatedIndicator != null)
             activatedIndicator.SetActive(true);
             
-        // Audio feedback
+  
         if (checkpointSound != null)
             checkpointSound.Play();
             
-        // Particle effect
+ 
         if (checkpointEffect != null)
             checkpointEffect.Play();
             
         Debug.Log($"Checkpoint activated at position: {transform.position}");
     }
     
-    // Method to reset checkpoint (useful for level reset)
+  
     public void ResetCheckpoint()
     {
         isActivated = false;
@@ -61,7 +61,7 @@ public class Checkpoint : MonoBehaviour
             activatedIndicator.SetActive(false);
     }
     
-    // Gizmos for easier placement in editor
+   
     private void OnDrawGizmos()
     {
         if (!showGizmos) return;

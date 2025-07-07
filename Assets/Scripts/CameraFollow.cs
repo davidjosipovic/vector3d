@@ -3,7 +3,7 @@ using UnityEngine;
 public class CameraFollow : MonoBehaviour
 {
     [Header("Target")]
-    public Transform target; // Player transform
+    public Transform target;
     
     [Header("Camera Settings")]
     public Vector3 offset = new Vector3(0, 5, -10);
@@ -18,7 +18,7 @@ public class CameraFollow : MonoBehaviour
     
     void Start()
     {
-        // Auto-find player if not assigned
+  
         if (target == null)
         {
             GameObject player = GameObject.FindGameObjectWithTag("Player");
@@ -33,13 +33,13 @@ public class CameraFollow : MonoBehaviour
     {
         if (target == null) return;
         
-        // Calculate desired position
+     
         Vector3 desiredPosition = target.position + offset;
         
-        // Smooth camera movement
+   
         transform.position = Vector3.SmoothDamp(transform.position, desiredPosition, ref velocity, 1f / followSpeed);
         
-        // Look at target
+      
         if (lookAtTarget)
         {
             Vector3 lookAtPosition = target.position + lookOffset;
@@ -49,12 +49,12 @@ public class CameraFollow : MonoBehaviour
         }
     }
     
-    // Method called by CheckpointManager to reset camera position immediately
+
     public void ResetCameraPosition()
     {
         if (target != null)
         {
-            // Immediately position camera without smoothing
+           
             transform.position = target.position + offset;
             
             if (lookAtTarget)
@@ -63,14 +63,14 @@ public class CameraFollow : MonoBehaviour
                 transform.LookAt(lookAtPosition);
             }
             
-            // Reset velocity for smooth movement
+           
             velocity = Vector3.zero;
             
             Debug.Log("Camera position reset for checkpoint respawn");
         }
     }
     
-    // Gizmos for easier setup
+    
     void OnDrawGizmosSelected()
     {
         if (target != null)

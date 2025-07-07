@@ -5,10 +5,10 @@ public class BasicCanvasSetup : MonoBehaviour
 {
     [Header("Auto Setup")]
     public bool autoCreateUI = true;
-    public bool useTextMeshPro = true; // Set to false to use legacy UI Text
+    public bool useTextMeshPro = true; 
     
     [Header("Timer UI Settings")]
-    public Vector2 timerPosition = new Vector2(20, -20); // Top-left corner
+    public Vector2 timerPosition = new Vector2(20, -20);
     public Vector2 timerSize = new Vector2(200, 50);
     public int timerFontSize = 24;
     public Color timerColor = Color.white;
@@ -28,7 +28,7 @@ public class BasicCanvasSetup : MonoBehaviour
     [ContextMenu("Create Basic UI")]
     public void CreateBasicUI()
     {
-        // Find or create Canvas
+        
         Canvas canvas = FindObjectOfType<Canvas>();
         if (canvas == null)
         {
@@ -39,13 +39,13 @@ public class BasicCanvasSetup : MonoBehaviour
             canvasGO.AddComponent<GraphicRaycaster>();
         }
         
-        // Create timer UI
+        
         CreateTimerUI(canvas);
         
-        // Create completion UI
+        
         CreateCompletionUI(canvas);
         
-        // Setup GameUI component
+        
         SetupGameUI(canvas);
         
         Debug.Log("Basic game UI created successfully!");
@@ -53,18 +53,18 @@ public class BasicCanvasSetup : MonoBehaviour
     
     private void CreateTimerUI(Canvas canvas)
     {
-        // Timer Panel
+       
         GameObject timerPanel = new GameObject("Timer Panel");
         timerPanel.transform.SetParent(canvas.transform, false);
         
         RectTransform timerPanelRT = timerPanel.AddComponent<RectTransform>();
-        timerPanelRT.anchorMin = new Vector2(0, 1); // Top-left
+        timerPanelRT.anchorMin = new Vector2(0, 1); 
         timerPanelRT.anchorMax = new Vector2(0, 1);
         timerPanelRT.pivot = new Vector2(0, 1);
         timerPanelRT.anchoredPosition = timerPosition;
         timerPanelRT.sizeDelta = timerSize;
         
-        // Timer Text
+        
         GameObject timerTextGO = new GameObject("Timer Text");
         timerTextGO.transform.SetParent(timerPanel.transform, false);
         
@@ -95,23 +95,23 @@ public class BasicCanvasSetup : MonoBehaviour
     
     private void CreateCompletionUI(Canvas canvas)
     {
-        // Completion Panel (initially hidden)
+       
         GameObject completionPanel = new GameObject("Completion Panel");
         completionPanel.transform.SetParent(canvas.transform, false);
         completionPanel.SetActive(false);
         
         RectTransform completionPanelRT = completionPanel.AddComponent<RectTransform>();
-        completionPanelRT.anchorMin = new Vector2(0.5f, 0.5f); // Center
+        completionPanelRT.anchorMin = new Vector2(0.5f, 0.5f); 
         completionPanelRT.anchorMax = new Vector2(0.5f, 0.5f);
         completionPanelRT.pivot = new Vector2(0.5f, 0.5f);
         completionPanelRT.anchoredPosition = Vector2.zero;
         completionPanelRT.sizeDelta = completionPanelSize;
         
-        // Background
+        
         Image completionBG = completionPanel.AddComponent<Image>();
         completionBG.color = completionBackgroundColor;
         
-        // Title Text
+        
         GameObject titleGO = new GameObject("Title Text");
         titleGO.transform.SetParent(completionPanel.transform, false);
         
@@ -139,7 +139,7 @@ public class BasicCanvasSetup : MonoBehaviour
             titleText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
         }
         
-        // Time Text
+        
         GameObject timeGO = new GameObject("Time Text");
         timeGO.transform.SetParent(completionPanel.transform, false);
         
@@ -167,7 +167,7 @@ public class BasicCanvasSetup : MonoBehaviour
             timeText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
         }
         
-        // Buttons
+       
         CreateButton(completionPanel, "Next Level Button", new Vector2(0, 0.25f), new Vector2(0.45f, 0.45f), "Next Level");
         CreateButton(completionPanel, "Restart Button", new Vector2(0.55f, 0.25f), new Vector2(1, 0.45f), "Restart Level");
     }
@@ -188,7 +188,7 @@ public class BasicCanvasSetup : MonoBehaviour
         
         Button button = buttonGO.AddComponent<Button>();
         
-        // Button Text
+     
         GameObject buttonTextGO = new GameObject("Text");
         buttonTextGO.transform.SetParent(buttonGO.transform, false);
         
@@ -219,14 +219,14 @@ public class BasicCanvasSetup : MonoBehaviour
     
     private void SetupGameUI(Canvas canvas)
     {
-        // Add GameUI component to canvas
+        
         GameUI gameUI = canvas.GetComponent<GameUI>();
         if (gameUI == null)
         {
             gameUI = canvas.gameObject.AddComponent<GameUI>();
         }
         
-        // Find and assign UI references
+      
         Transform timerPanel = canvas.transform.Find("Timer Panel");
         if (timerPanel != null)
         {
@@ -247,16 +247,16 @@ public class BasicCanvasSetup : MonoBehaviour
             {
                 TMPro.TextMeshProUGUI[] texts = completionPanel.GetComponentsInChildren<TMPro.TextMeshProUGUI>();
                 if (texts.Length > 1)
-                    gameUI.completionTimeTextTMP = texts[1]; // Second text is the time
+                    gameUI.completionTimeTextTMP = texts[1]; 
             }
             else
             {
                 Text[] texts = completionPanel.GetComponentsInChildren<Text>();
                 if (texts.Length > 1)
-                    gameUI.completionTimeText = texts[1]; // Second text is the time
+                    gameUI.completionTimeText = texts[1];
             }
             
-            // Connect buttons
+           
             Button[] buttons = completionPanel.GetComponentsInChildren<Button>();
             foreach (Button button in buttons)
             {
@@ -264,27 +264,27 @@ public class BasicCanvasSetup : MonoBehaviour
                 {
                     gameUI.nextLevelButton = button;
                     button.onClick.AddListener(gameUI.NextLevel);
-                    Debug.Log("✅ Next Level button connected");
+                    Debug.Log("Next Level button connected");
                 }
                 else if (button.name == "Restart Button")
                 {
                     gameUI.restartButton = button;
                     button.onClick.AddListener(gameUI.RestartLevel);
-                    Debug.Log("✅ Restart button connected");
+                    Debug.Log("Restart button connected");
                 }
             }
         }
         
         Debug.Log("GameUI component configured successfully!");
         
-        // Verify the setup
+        
         if (gameUI.timerText != null || gameUI.timerTextTMP != null)
         {
-            Debug.Log("✅ Timer UI components connected successfully!");
+            Debug.Log("Timer UI components connected successfully!");
         }
         else
         {
-            Debug.LogWarning("⚠️ Timer UI components not connected! Check setup.");
+            Debug.LogWarning("Timer UI components not connected! Check setup.");
         }
     }
 }
