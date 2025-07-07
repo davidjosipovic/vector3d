@@ -8686,7 +8686,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 726368170}
-  m_LocalRotation: {x: 0.1005514, y: -0.699921, z: 0.1005514, w: 0.699921}
+  m_LocalRotation: {x: 0.10055138, y: -0.699921, z: 0.10055138, w: 0.699921}
   m_LocalPosition: {x: -290.09, y: 80.86, z: -234.57}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -18480,7 +18480,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1573239596}
-  m_LocalRotation: {x: 0.10055138, y: -0.699921, z: 0.10055138, w: 0.699921}
+  m_LocalRotation: {x: 0.100551374, y: -0.699921, z: 0.100551374, w: 0.699921}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -20066,7 +20066,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1628064166}
   m_LocalRotation: {x: 0, y: -0.7071068, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: -338.63, y: 83.26, z: -231.29}
+  m_LocalPosition: {x: -346.81, y: 83.26, z: -231.29}
   m_LocalScale: {x: 8.630002, y: 1, z: 3.1080666}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -24573,7 +24573,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1978776202}
-  m_LocalRotation: {x: 0.08783724, y: -0.70163, z: 0.08783724, w: 0.70163}
+  m_LocalRotation: {x: 0.08783726, y: -0.70162994, z: 0.08783723, w: 0.70163006}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -26864,6 +26864,7 @@ MonoBehaviour:
   animator: {fileID: 2138083464}
   visualModel: {fileID: 2138083460}
   coyoteTimeDuration: 0.15
+  jumpBufferDuration: 0.1
   wallCheckDistance: 0.6
   wallRunLayer:
     serializedVersion: 2
@@ -26872,6 +26873,14 @@ MonoBehaviour:
   wallRunSpeed: 7
   maxWallRunTime: 2.31
   wallJumpForce: 7
+  wallJumpForwardForce: 0.3
+  wallJumpSideForce: 0.8
+  wallJumpUpwardForce: 1
+  allowWallJumpChaining: 1
+  wallJumpChainCooldown: 0.1
+  maxConsecutiveWallJumps: 5
+  wallJumpGracePeriod: 0.3
+  wallJumpMovementDuration: 0.4
 --- !u!95 &2138083464
 Animator:
   serializedVersion: 5

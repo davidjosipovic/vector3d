@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 public class LevelTimer : MonoBehaviour
 {
@@ -19,11 +20,11 @@ public class LevelTimer : MonoBehaviour
     
     void Awake()
     {
-        // Singleton setup
+        // Scene-specific singleton setup (don't persist between levels to avoid glitches)
         if (Instance == null)
         {
             Instance = this;
-            DontDestroyOnLoad(gameObject);
+            // Removed DontDestroyOnLoad to fix level transition glitches
         }
         else
         {
@@ -153,5 +154,30 @@ public class LevelTimer : MonoBehaviour
     public void RestartLevel()
     {
         ResetTimer();
+    }
+
+    // Scene management for proper level transitions
+    private void OnEnable()
+    {
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+    
+    private void OnDisable()
+    {
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+    
+    private void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+    {
+        // Reset timer for new level
+        if (Instance == this)
+        {
+            ResetTimer();
+            if (startTimerOnStart)
+            {
+                StartTimer();
+            }
+            Debug.Log($"LevelTimer reset for new scene: {scene.name}");
+        }
     }
 }

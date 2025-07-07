@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using Cinemachine;
 
 public class CheckpointManager : MonoBehaviour
@@ -20,11 +21,11 @@ public class CheckpointManager : MonoBehaviour
     
     private void Awake()
     {
-        // Singleton pattern
+        // Scene-specific singleton pattern (don't persist between levels)
         if (Instance == null)
         {
             Instance = this;
-            DontDestroyOnLoad(gameObject);
+            // Removed DontDestroyOnLoad to fix level transition glitches
         }
         else
         {
@@ -258,6 +259,46 @@ public class CheckpointManager : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.T))
         {
             RespawnPlayer();
+        }
+    }
+    
+    // Called when a new level starts to ensure clean state
+    public void OnLevelStart()
+    {
+        // Reset checkpoint state for new level
+        hasCheckpoint = false;
+        
+        // Set initial checkpoint to default spawn if available
+        if (defaultSpawnPoint != null)
+        {
+            SetCurrentCheckpoint(defaultSpawnPoint.position, defaultSpawnPoint.rotation);
+            if (showDebugInfo)
+                Debug.Log($"Level started - default checkpoint set at: {defaultSpawnPoint.position}");
+        }
+        else
+        {
+            if (showDebugInfo)
+                Debug.LogWarning("No default spawn point set for new level!");
+        }
+    }
+    
+    // Ensure clean instance on scene load
+    private void OnEnable()
+    {
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+    
+    private void OnDisable()
+    {
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+    
+    private void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+    {
+        // Reset instance reference to prevent conflicts
+        if (Instance == this)
+        {
+            OnLevelStart();
         }
     }
 
