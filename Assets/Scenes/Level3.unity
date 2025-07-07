@@ -816,7 +816,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 41345149}
-  m_LocalRotation: {x: 0.11326594, y: -0.69797623, z: 0.11326594, w: 0.69797623}
+  m_LocalRotation: {x: 0.11326595, y: -0.69797623, z: 0.113265954, w: 0.69797623}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -4897,11 +4897,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: f12c9b98f1348144eac6de21883bfe14, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -122.89
+      value: -125.39
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: f12c9b98f1348144eac6de21883bfe14, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 11.08
+      value: 12.12
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: f12c9b98f1348144eac6de21883bfe14, type: 3}
       propertyPath: m_LocalPosition.z
@@ -9004,11 +9004,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 0f0397b5db1d1b543a506884b8347ed9, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -140.4
+      value: -145.89
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 0f0397b5db1d1b543a506884b8347ed9, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 9.58
+      value: 10.9
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 0f0397b5db1d1b543a506884b8347ed9, type: 3}
       propertyPath: m_LocalPosition.z
@@ -22765,7 +22765,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1978776202}
-  m_LocalRotation: {x: 0.08783726, y: -0.70162994, z: 0.08783723, w: 0.70163006}
+  m_LocalRotation: {x: 0.08783724, y: -0.70163, z: 0.08783724, w: 0.70163}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -24908,6 +24908,9 @@ MonoBehaviour:
   maxConsecutiveWallJumps: 5
   wallJumpGracePeriod: 0.3
   wallJumpMovementDuration: 0.4
+  slowDownSpeedMultiplier: 0.3
+  slowDownAnimationSpeed: 0.5
+  canSlowDownWhileSliding: 0
 --- !u!95 &2138083464
 Animator:
   serializedVersion: 5
