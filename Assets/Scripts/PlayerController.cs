@@ -99,6 +99,12 @@ public class PlayerController : MonoBehaviour
     private bool isSlowingDown = false;
     private float originalAnimatorSpeed = 1f;     // Store original animator speed
 
+    [Header("Falling Animation Settings")]
+    public float fallingThreshold = -8f;        // Brzina pada kada se aktivira falling animacija
+    public float fallingTimeThreshold = 1.5f;   // Vrijeme u padu prije falling animacije
+    
+    private float fallingTime = 0f;             // Koliko dugo igrač pada
+
     void Start()
     {
         controller = GetComponent<CharacterController>();
@@ -361,9 +367,13 @@ public class PlayerController : MonoBehaviour
             {
                 jumpStarted = false;
                 if (animator != null)
+                {
                     animator.SetBool("IsJumping", false);
-                    
-                Debug.Log("Jump animation reset - player landed");
+                    animator.SetBool("IsFalling", false); // Reset falling animation when landing
+                }
+                
+                fallingTime = 0f; // Reset falling time when landing
+                Debug.Log("Jump and falling animations reset - player landed");
             }
         }
         else
@@ -408,6 +418,9 @@ public class PlayerController : MonoBehaviour
             velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
             jumpStarted = true;
             
+            // Reset falling animation and timer when jumping (important for jumping out of falling state)
+            fallingTime = 0f;
+            
             // Log for debugging coyote jumps vs regular jumps
             bool isCoyoteJump = canCoyoteJump && !canRegularJump;
             if (isCoyoteJump)
@@ -424,7 +437,11 @@ public class PlayerController : MonoBehaviour
             jumpBufferCounter = 0f;
 
             if (animator != null)
+            {
                 animator.SetBool("IsJumping", true);
+                animator.SetBool("IsFalling", false); // Reset falling animation when jumping
+                Debug.Log("Jump started - falling animation reset");
+            }
 
             // Stop slide if jumping
             if (isSliding)
@@ -522,20 +539,74 @@ public class PlayerController : MonoBehaviour
             animator.SetBool("IsSliding", isSliding);
             animator.SetBool("IsClimbing", isClimbing);
             
+            // DRAMATIC FALLING LOGIC - kao pad u provaliju
+            bool isDramaticFalling = false;
+            
+            if (!isGrounded && velocity.y < 0f && !isClimbing && !isWallRunning && !isSliding)
+            {
+                // Broji vrijeme u padu
+                fallingTime += Time.deltaTime;
+                
+                // IMPORTANT: Ne aktiviraj falling ako je igrač u jump animaciji I pad nije dovoljno dug
+                // Ali ako pada dugo vremena, dozvoli falling animaciju čak i tokom jump-a
+                bool isCurrentlyJumping = animator.GetBool("IsJumping") || jumpStarted;
+                bool allowFallingDuringJump = fallingTime > 0.5f; // Nakon 0.5s pada, dozvoli falling
+                
+                if (!isCurrentlyJumping || allowFallingDuringJump)
+                {
+                    // Dramatic falling se aktivira kad:
+                    // 1. Igrač pada dugo (više od threshold vremena)
+                    // 2. ILI pada jako brzo (brzina veća od threshold)
+                    isDramaticFalling = (fallingTime >= fallingTimeThreshold) || 
+                                       (velocity.y <= fallingThreshold);
+                    
+                    if (isDramaticFalling)
+                    {
+                        string reason = allowFallingDuringJump ? "Long fall during jump" : "Not jumping";
+                        Debug.Log($"🌊 DRAMATIC FALLING! Time: {fallingTime:F1}s, Speed: {velocity.y:F1} ({reason})");
+                    }
+                }
+                else
+                {
+                    // Ne resetuj falling time, samo nastavi da broji
+                    Debug.Log($"Still jumping - falling time: {fallingTime:F1}s, velocity.y: {velocity.y:F1}");
+                }
+            }
+            else
+            {
+                // Reset falling time kad igrač nije u padu
+                fallingTime = 0f;
+            }
+            
+            animator.SetBool("IsFalling", isDramaticFalling);
+            
             // Only force reset jump animation if grounded AND not just started jumping AND falling
             // This prevents interference with coyote jumps
             if (isGrounded && !jumpStarted && animator.GetBool("IsJumping") && velocity.y <= 0f)
             {
                 animator.SetBool("IsJumping", false);
-                Debug.Log("Jump animation force reset in UpdateAnimations - player landed");
+                animator.SetBool("IsFalling", false); // Also reset falling animation
+                fallingTime = 0f; // Reset falling time when landing
+                Debug.Log("Jump and falling animations force reset in UpdateAnimations - player landed");
+            }
+            
+            // IMPROVED: Reset jump animation when falling for a while (natural transition from jump to fall)
+            // This allows jump animation to play fully, then transition to falling
+            if (!isGrounded && velocity.y < -2f && animator.GetBool("IsJumping") && fallingTime > 0.3f)
+            {
+                animator.SetBool("IsJumping", false);
+                jumpStarted = false;
+                Debug.Log($"Jump animation reset - transitioning to falling (velocity: {velocity.y:F1}, falling time: {fallingTime:F1}s)");
             }
             
             // Reset jump animation if player is in wall run or climbing (special states)
             if ((isWallRunning || isClimbing) && animator.GetBool("IsJumping"))
             {
                 animator.SetBool("IsJumping", false);
+                animator.SetBool("IsFalling", false); // Also reset falling animation in special states
+                fallingTime = 0f; // Reset falling time in special states
                 jumpStarted = false; // Also reset jump started flag
-                Debug.Log("Jump animation reset - player in special state (wall run/climbing)");
+                Debug.Log("Jump and falling animations reset - player in special state (wall run/climbing)");
             }
         }
     }
@@ -557,7 +628,13 @@ public class PlayerController : MonoBehaviour
         slideVisualOffsetCoroutine = StartCoroutine(ApplyVisualOffsetSmoothWithDelay());
 
         if (animator != null)
+        {
             animator.SetBool("IsSliding", true);
+            animator.SetBool("IsFalling", false); // Reset falling animation when sliding starts
+        }
+        
+        // Reset falling time when sliding starts
+        fallingTime = 0f;
     }
 
     private void EndSlide()
@@ -712,10 +789,14 @@ public class PlayerController : MonoBehaviour
             animator.SetBool("IsClimbing", true);
             animator.SetBool("IsSliding", false);
             animator.SetBool("IsJumping", false);
+            animator.SetBool("IsFalling", false); // Reset falling animation when climbing starts
             animator.SetFloat("Speed", 0f);
             
-            Debug.Log("Jump animation reset - climbing started");
+            Debug.Log("Jump and falling animations reset - climbing started");
         }
+        
+        // Reset falling time when climbing starts
+        fallingTime = 0f;
 
         Debug.Log($"Climb duration: {duration:F2}s, Distance: {distance:F2}m");
 
@@ -986,7 +1067,18 @@ public class PlayerController : MonoBehaviour
             animator.SetBool("IsJumping", false);
             animator.SetBool("IsSliding", false);
             animator.SetBool("IsClimbing", false);
+            animator.SetBool("IsFalling", false);
             animator.SetFloat("Speed", 0f);
+        }
+        
+        // Reset falling timer and ensure falling animation is fully disabled
+        fallingTime = 0f;
+        
+        // Additional safety: Ensure falling animation is properly reset
+        if (animator != null && animator.GetBool("IsFalling"))
+        {
+            Debug.Log("Force-resetting falling animation during player state reset");
+            animator.SetBool("IsFalling", false);
         }
 
         // Reset visual model position
@@ -995,7 +1087,7 @@ public class PlayerController : MonoBehaviour
             visualModel.localPosition = new Vector3(0, visualModelOriginalLocalY, 0);
         }
 
-        Debug.Log("Player state reset for checkpoint respawn");
+        Debug.Log("Player state reset for checkpoint respawn - all animations including falling have been reset");
     }
 
     // Debug method to test coyote time behavior (called via T key)
