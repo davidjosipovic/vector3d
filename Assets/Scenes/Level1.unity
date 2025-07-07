@@ -773,7 +773,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 41345149}
-  m_LocalRotation: {x: 0.11326594, y: -0.69797623, z: 0.11326594, w: 0.69797623}
+  m_LocalRotation: {x: 0.11326595, y: -0.69797623, z: 0.113265954, w: 0.69797623}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -8686,7 +8686,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 726368170}
-  m_LocalRotation: {x: 0.10055138, y: -0.699921, z: 0.10055138, w: 0.699921}
+  m_LocalRotation: {x: 0.1005514, y: -0.699921, z: 0.1005514, w: 0.699921}
   m_LocalPosition: {x: -290.09, y: 80.86, z: -234.57}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -18480,7 +18480,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1573239596}
-  m_LocalRotation: {x: 0.100551374, y: -0.699921, z: 0.100551374, w: 0.699921}
+  m_LocalRotation: {x: 0.10055138, y: -0.699921, z: 0.10055138, w: 0.699921}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -20015,6 +20015,7 @@ GameObject:
   - component: {fileID: 1628064169}
   - component: {fileID: 1628064168}
   - component: {fileID: 1628064167}
+  - component: {fileID: 1628064170}
   m_Layer: 0
   m_Name: FinishLine
   m_TagString: Finish
@@ -20067,12 +20068,29 @@ Transform:
   m_GameObject: {fileID: 1628064166}
   m_LocalRotation: {x: 0, y: -0.7071068, z: 0, w: 0.7071068}
   m_LocalPosition: {x: -346.81, y: 83.26, z: -231.29}
-  m_LocalScale: {x: 8.630002, y: 1, z: 3.1080666}
+  m_LocalScale: {x: 8.630002, y: 3.5888, z: 5.06273}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 48
   m_LocalEulerAnglesHint: {x: 0, y: -90, z: 0}
+--- !u!114 &1628064170
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1628064166}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 07be1ce01e56fd349872501ad3ba43fe, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playerTag: Player
+  showDebugInfo: 1
+  disablePlayerOnFinish: 1
+  finishParticles: {fileID: 0}
+  finishSound: {fileID: 0}
 --- !u!1 &1628248046
 GameObject:
   m_ObjectHideFlags: 0
@@ -26881,6 +26899,9 @@ MonoBehaviour:
   maxConsecutiveWallJumps: 5
   wallJumpGracePeriod: 0.3
   wallJumpMovementDuration: 0.4
+  slowDownSpeedMultiplier: 0.3
+  slowDownAnimationSpeed: 0.5
+  canSlowDownWhileSliding: 0
 --- !u!95 &2138083464
 Animator:
   serializedVersion: 5

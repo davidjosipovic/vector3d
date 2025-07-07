@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class GameUI : MonoBehaviour
 {
@@ -23,6 +24,22 @@ public class GameUI : MonoBehaviour
     public Color completedTimeColor = Color.green;
     
     private LevelTimer levelTimer;
+    
+    // Singleton pattern for easy access
+    public static GameUI Instance { get; private set; }
+    
+    void Awake()
+    {
+        // Scene-specific singleton
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+    }
     
     void Start()
     {
@@ -104,40 +121,66 @@ public class GameUI : MonoBehaviour
     
     private void ShowCompletionUI()
     {
-        if (completionPanel != null)
+        if (completionPanel != null && levelTimer != null)
         {
             completionPanel.SetActive(true);
             
-            // Update completion time
-            string finalTimeString = FormatCompletionTime(levelTimer.GetFinalTime());
+            // Show completion time
+            float finalTime = levelTimer.GetFinalTime();
+            string timeString = levelTimer.FormatTime(finalTime);
+            
+            // IMPORTANT: Ensure level completion is recorded in GameProgressManager
+            if (GameProgressManager.Instance != null)
+            {
+                // Try normal method first
+                GameProgressManager.Instance.OnLevelCompleted(finalTime);
+                
+                // Also use fallback method to ensure it's recorded
+                GameProgressManager.Instance.ForceRecordLevelCompletion(finalTime);
+                
+                Debug.Log($"🏁 Level completion recorded - Time: {finalTime}");
+            }
             
             if (completionTimeText != null)
-                completionTimeText.text = $"Final Time: {finalTimeString}";
-                
+            {
+                completionTimeText.text = $"Level Completed!\nTime: {timeString}";
+                completionTimeText.color = completedTimeColor;
+            }
+            
             if (completionTimeTextTMP != null)
-                completionTimeTextTMP.text = $"Final Time: {finalTimeString}";
-                
-            // Update completion message
-            string message = GetCompletionMessage(levelTimer.GetFinalTime());
+            {
+                completionTimeTextTMP.text = $"Level Completed!\nTime: {timeString}";
+                completionTimeTextTMP.color = completedTimeColor;
+            }
+            
+            // Set completion message based on whether this is the last level
+            string message = GetCompletionMessage(finalTime);
+            if (GameProgressManager.Instance != null)
+            {
+                if (GameProgressManager.Instance.IsLastLevel())
+                {
+                    message = "🎉 All Levels Complete! 🎉\nCheck the main menu for your results!";
+                }
+                else
+                {
+                    message = GetCompletionMessage(finalTime) + "\nReady for the next challenge?";
+                }
+            }
             
             if (completionMessageText != null)
                 completionMessageText.text = message;
-                
             if (completionMessageTextTMP != null)
                 completionMessageTextTMP.text = message;
-                
-            // Setup next level button
-            SetupNextLevelButton();
+            
+            // Setup buttons based on game state
+            SetupCompletionButtons();
+            
+            Debug.Log($"✅ Completion UI shown - Time: {timeString}");
         }
-    }
-    
-    private string FormatCompletionTime(float timeInSeconds)
-    {
-        System.TimeSpan timeSpan = System.TimeSpan.FromSeconds(timeInSeconds);
-        return string.Format("{0:00}:{1:00}:{2:00}", 
-            timeSpan.Minutes, 
-            timeSpan.Seconds, 
-            timeSpan.Milliseconds / 10);
+        else
+        {
+            Debug.LogWarning("⚠️ Cannot show completion UI - missing references!");
+        }
     }
     
     private string GetCompletionMessage(float timeInSeconds)
@@ -153,14 +196,12 @@ public class GameUI : MonoBehaviour
             return "✅ Level completed! ✅";
     }
     
-    private void SetupNextLevelButton()
+    private void SetupCompletionButtons()
     {
-        // Find finish line to get next level info
-        FinishLine finishLine = FindObjectOfType<FinishLine>();
-        
-        if (nextLevelButton != null && finishLine != null)
+        // Setup Next Level button
+        if (nextLevelButton != null)
         {
-            if (finishLine.ShouldShowNextLevelButton())
+            if (GameProgressManager.Instance != null && GameProgressManager.Instance.HasNextLevel())
             {
                 nextLevelButton.gameObject.SetActive(true);
                 
@@ -168,7 +209,7 @@ public class GameUI : MonoBehaviour
                 Text buttonText = nextLevelButton.GetComponentInChildren<Text>();
                 TMPro.TextMeshProUGUI buttonTextTMP = nextLevelButton.GetComponentInChildren<TMPro.TextMeshProUGUI>();
                 
-                string buttonLabel = $"Next Level ({finishLine.GetNextLevelName()})";
+                string buttonLabel = "Next Level";
                 
                 if (buttonText != null)
                     buttonText.text = buttonLabel;
@@ -177,61 +218,140 @@ public class GameUI : MonoBehaviour
                 
                 // Clear existing listeners and add new one
                 nextLevelButton.onClick.RemoveAllListeners();
-                nextLevelButton.onClick.AddListener(() => finishLine.LoadNextLevel());
+                nextLevelButton.onClick.AddListener(() => {
+                    if (GameProgressManager.Instance != null)
+                    {
+                        GameProgressManager.Instance.LoadNextLevel();
+                    }
+                });
                 
-                Debug.Log($"✅ Next Level button configured for: {finishLine.GetNextLevelName()}");
+                Debug.Log($"✅ Next Level button configured");
             }
             else
             {
                 nextLevelButton.gameObject.SetActive(false);
-                Debug.Log("ℹ️ Next Level button hidden (not configured)");
+                Debug.Log("ℹ️ Next Level button hidden (last level or no GameProgressManager)");
             }
         }
-        else if (nextLevelButton == null)
+        
+        // Setup Restart button
+        if (restartButton != null)
         {
-            Debug.LogWarning("⚠️ Next Level button not assigned in GameUI!");
+            restartButton.gameObject.SetActive(true);
+            
+            // Setup button text
+            Text buttonText = restartButton.GetComponentInChildren<Text>();
+            TMPro.TextMeshProUGUI buttonTextTMP = restartButton.GetComponentInChildren<TMPro.TextMeshProUGUI>();
+            
+            string buttonLabel = "Restart Level";
+            
+            if (buttonText != null)
+                buttonText.text = buttonLabel;
+            if (buttonTextTMP != null)
+                buttonTextTMP.text = buttonLabel;
+            
+            // Clear existing listeners and add new one
+            restartButton.onClick.RemoveAllListeners();
+            restartButton.onClick.AddListener(() => {
+                if (GameProgressManager.Instance != null)
+                {
+                    GameProgressManager.Instance.RestartCurrentLevel();
+                }
+                else
+                {
+                    RestartLevel(); // Fallback to old method
+                }
+            });
+            
+            Debug.Log($"✅ Restart button configured");
         }
-        else if (finishLine == null)
+        
+        // If this is the last level, show a main menu button instead of next level
+        if (GameProgressManager.Instance != null && GameProgressManager.Instance.IsLastLevel())
         {
-            Debug.LogWarning("⚠️ FinishLine not found for next level setup!");
+            // We can repurpose the next level button as a main menu button
+            if (nextLevelButton != null)
+            {
+                nextLevelButton.gameObject.SetActive(true);
+                
+                // Setup button text
+                Text buttonText = nextLevelButton.GetComponentInChildren<Text>();
+                TMPro.TextMeshProUGUI buttonTextTMP = nextLevelButton.GetComponentInChildren<TMPro.TextMeshProUGUI>();
+                
+                string buttonLabel = "Main Menu";
+                
+                if (buttonText != null)
+                    buttonText.text = buttonLabel;
+                if (buttonTextTMP != null)
+                    buttonTextTMP.text = buttonLabel;
+                
+                // Clear existing listeners and add new one
+                nextLevelButton.onClick.RemoveAllListeners();
+                nextLevelButton.onClick.AddListener(() => {
+                    if (GameProgressManager.Instance != null)
+                    {
+                        // Before going to main menu, ensure level completion is recorded one more time
+                        if (levelTimer != null)
+                        {
+                            float currentFinalTime = levelTimer.GetFinalTime();
+                            GameProgressManager.Instance.ForceRecordLevelCompletion(currentFinalTime);
+                            Debug.Log($"🏁 Final check - recorded time {currentFinalTime} before going to main menu");
+                        }
+                        
+                        GameProgressManager.Instance.LoadMainMenuWithResults();
+                    }
+                });
+                
+                Debug.Log($"✅ Main Menu button configured (last level)");
+            }
         }
     }
     
     // Public methods for UI controls
     public void RestartLevel()
     {
-        if (levelTimer != null)
-        {
-            levelTimer.RestartLevel();
-        }
-        
         if (completionPanel != null)
             completionPanel.SetActive(false);
             
-        // Restart the scene
-        UnityEngine.SceneManagement.SceneManager.LoadScene(
-            UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
+        // Use GameProgressManager if available, otherwise fallback
+        if (GameProgressManager.Instance != null)
+        {
+            GameProgressManager.Instance.RestartCurrentLevel();
+        }
+        else
+        {
+            // Fallback: restart the scene directly
+            UnityEngine.SceneManagement.SceneManager.LoadScene(
+                UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
+        }
     }
     
     public void NextLevel()
     {
-        // Find finish line and load next level
-        FinishLine finishLine = FindObjectOfType<FinishLine>();
-        if (finishLine != null)
+        // Use GameProgressManager for level transitions
+        if (GameProgressManager.Instance != null)
         {
-            finishLine.LoadNextLevel();
+            GameProgressManager.Instance.LoadNextLevel();
         }
         else
         {
-            Debug.LogWarning("FinishLine not found! Cannot load next level.");
+            Debug.LogWarning("GameProgressManager not found! Cannot load next level.");
         }
     }
     
     public void MainMenu()
     {
-        // Return to main menu
-        Debug.Log("Main menu requested");
-        // UnityEngine.SceneManagement.SceneManager.LoadScene("MainMenu");
+        // Return to main menu using GameProgressManager
+        if (GameProgressManager.Instance != null)
+        {
+            GameProgressManager.Instance.LoadMainMenuWithResults();
+        }
+        else
+        {
+            // Fallback: load scene 0 (assumed to be main menu)
+            Debug.Log("GameProgressManager not found, loading scene 0 as main menu");
+            UnityEngine.SceneManagement.SceneManager.LoadScene(0);
+        }
     }
     
     public void ToggleTimerUI()
@@ -239,5 +359,13 @@ public class GameUI : MonoBehaviour
         showTimerUI = !showTimerUI;
         if (timerPanel != null)
             timerPanel.SetActive(showTimerUI);
+    }
+    
+    public void ShowLevelCompleteMessage()
+    {
+        if (levelTimer != null && levelTimer.IsCompleted())
+        {
+            ShowCompletionUI();
+        }
     }
 }

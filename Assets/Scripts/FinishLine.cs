@@ -18,10 +18,10 @@ public class FinishLine : MonoBehaviour
     public GameObject celebrationEffect;
     
     [Header("Level Transition")]
-    public bool autoLoadNextLevel = false;
+    public bool autoLoadNextLevel = false; // Disabled by default to prevent auto-transitions
     public string nextLevelName = "Level2";
     public float delayBeforeNextLevel = 2f;
-    public bool showNextLevelButton = true;
+    public bool showNextLevelButton = false; // Disabled - using GameUI buttons instead
     
     private bool levelCompleted = false;
     

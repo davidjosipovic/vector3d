@@ -77,6 +77,16 @@ public class LevelTimer : MonoBehaviour
             levelCompleted = true;
             
             Debug.Log($"Level completed! Final time: {FormatTime(finalTime)}");
+            
+            // Notify GameProgressManager about level completion
+            if (GameProgressManager.Instance != null)
+            {
+                GameProgressManager.Instance.OnLevelCompleted(finalTime);
+            }
+            else
+            {
+                Debug.LogWarning("GameProgressManager not found! Level completion not recorded.");
+            }
         }
     }
     

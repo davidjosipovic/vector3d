@@ -276,6 +276,13 @@ public class CheckpointManager : MonoBehaviour
         {
             RespawnPlayer();
         }
+        
+        // Press L to manually fix lighting
+        if (Input.GetKeyDown(KeyCode.L))
+        {
+            FixSceneLighting();
+            Debug.Log("Manual lighting fix applied!");
+        }
     }
     
     // Called when a new level starts to ensure clean state
@@ -315,7 +322,37 @@ public class CheckpointManager : MonoBehaviour
         if (Instance == this)
         {
             OnLevelStart();
+            
+            // Fix lighting issues when loading new scene
+            FixSceneLighting();
         }
+    }
+    
+    private void FixSceneLighting()
+    {
+        // Try to find existing SceneLightingFix component
+        SceneLightingFix lightingFix = FindObjectOfType<SceneLightingFix>();
+        
+        if (lightingFix != null)
+        {
+            // Use existing component
+            lightingFix.FixLighting();
+        }
+        else
+        {
+            // Create temporary lighting fix
+            GameObject tempFix = new GameObject("TempLightingFix");
+            SceneLightingFix tempComponent = tempFix.AddComponent<SceneLightingFix>();
+            
+            // Fix lighting then destroy the temporary object
+            tempComponent.FixLighting();
+            
+            // Destroy after a short delay to ensure fix is applied
+            Destroy(tempFix, 1f);
+        }
+        
+        if (showDebugInfo)
+            Debug.Log("CheckpointManager: Scene lighting fix applied");
     }
 
 }
