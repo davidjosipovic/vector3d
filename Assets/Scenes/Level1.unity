@@ -773,7 +773,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 41345149}
-  m_LocalRotation: {x: 0.11326595, y: -0.69797623, z: 0.113265954, w: 0.69797623}
+  m_LocalRotation: {x: 0.11326594, y: -0.69797623, z: 0.11326594, w: 0.69797623}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -8686,8 +8686,8 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 726368170}
-  m_LocalRotation: {x: 0.1005514, y: -0.699921, z: 0.1005514, w: 0.699921}
-  m_LocalPosition: {x: -290.09, y: 80.86, z: -234.57}
+  m_LocalRotation: {x: 0.10055138, y: -0.699921, z: 0.10055138, w: 0.699921}
+  m_LocalPosition: {x: -56.47, y: 57.98, z: -238.41}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -18480,7 +18480,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1573239596}
-  m_LocalRotation: {x: 0.10055138, y: -0.699921, z: 0.10055138, w: 0.699921}
+  m_LocalRotation: {x: 0.100551374, y: -0.699921, z: 0.100551374, w: 0.699921}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -23495,7 +23495,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1912384563}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -290.09, y: 80.86, z: -234.57}
+  m_LocalPosition: {x: -56.47, y: 57.98, z: -238.41}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -26776,15 +26776,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 859ea0fdd4375804b9408d447722dfcc, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -296.09
+      value: -62.47
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 859ea0fdd4375804b9408d447722dfcc, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 78.86
+      value: 55.98
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 859ea0fdd4375804b9408d447722dfcc, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -234.57
+      value: -238.41
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 859ea0fdd4375804b9408d447722dfcc, type: 3}
       propertyPath: m_LocalRotation.w
@@ -26902,6 +26902,9 @@ MonoBehaviour:
   slowDownSpeedMultiplier: 0.3
   slowDownAnimationSpeed: 0.5
   canSlowDownWhileSliding: 0
+  fallingThreshold: -8
+  fallingTimeThreshold: 2.5
+  jumpToFallTransition: 1
 --- !u!95 &2138083464
 Animator:
   serializedVersion: 5

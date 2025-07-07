@@ -101,7 +101,8 @@ public class PlayerController : MonoBehaviour
 
     [Header("Falling Animation Settings")]
     public float fallingThreshold = -8f;        // Brzina pada kada se aktivira falling animacija
-    public float fallingTimeThreshold = 1.5f;   // Vrijeme u padu prije falling animacije
+    public float fallingTimeThreshold = 2.5f;   // Vrijeme u padu prije falling animacije (povećano sa 1.5s na 2.5s)
+    public float jumpToFallTransition = 1.0f;   // Koliko dugo čeka da pređe sa jump na fall animaciju (povećano sa 0.5s)
     
     private float fallingTime = 0f;             // Koliko dugo igrač pada
 
@@ -143,6 +144,17 @@ public class PlayerController : MonoBehaviour
             {
                 Debug.LogError("PlayerController: No LevelTimer found in scene! Timer will not work.");
             }
+        }
+        
+        // Start gameplay music when level starts
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayGameplayMusic();
+            Debug.Log("🎵 Gameplay music started");
+        }
+        else
+        {
+            Debug.LogWarning("AudioManager not found! Music will not play during gameplay.");
         }
     }
 
@@ -550,7 +562,7 @@ public class PlayerController : MonoBehaviour
                 // IMPORTANT: Ne aktiviraj falling ako je igrač u jump animaciji I pad nije dovoljno dug
                 // Ali ako pada dugo vremena, dozvoli falling animaciju čak i tokom jump-a
                 bool isCurrentlyJumping = animator.GetBool("IsJumping") || jumpStarted;
-                bool allowFallingDuringJump = fallingTime > 0.5f; // Nakon 0.5s pada, dozvoli falling
+                bool allowFallingDuringJump = fallingTime > jumpToFallTransition; // Koristi novo podešavanje
                 
                 if (!isCurrentlyJumping || allowFallingDuringJump)
                 {
@@ -592,7 +604,7 @@ public class PlayerController : MonoBehaviour
             
             // IMPROVED: Reset jump animation when falling for a while (natural transition from jump to fall)
             // This allows jump animation to play fully, then transition to falling
-            if (!isGrounded && velocity.y < -2f && animator.GetBool("IsJumping") && fallingTime > 0.3f)
+            if (!isGrounded && velocity.y < -2f && animator.GetBool("IsJumping") && fallingTime > (jumpToFallTransition * 0.7f))
             {
                 animator.SetBool("IsJumping", false);
                 jumpStarted = false;

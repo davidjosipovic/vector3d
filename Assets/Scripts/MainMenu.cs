@@ -23,6 +23,17 @@ public class MainMenu : MonoBehaviour
     {
         Debug.Log("🏠 MainMenu Start() called");
         
+        // Start main menu music
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayMainMenuMusic();
+            Debug.Log("🎵 Main menu music started");
+        }
+        else
+        {
+            Debug.LogWarning("AudioManager not found! Music will not play.");
+        }
+        
         // Check if game was just completed
         if (GameProgressManager.Instance != null)
         {
