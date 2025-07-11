@@ -125,7 +125,7 @@ public class BasicCanvasSetup : MonoBehaviour
         {
             TMPro.TextMeshProUGUI titleText = titleGO.AddComponent<TMPro.TextMeshProUGUI>();
             titleText.text = "Level Completed!";
-            titleText.fontSize = 28;
+            titleText.fontSize = 36;
             titleText.color = Color.white;
             titleText.alignment = TMPro.TextAlignmentOptions.Center;
         }
@@ -133,7 +133,7 @@ public class BasicCanvasSetup : MonoBehaviour
         {
             Text titleText = titleGO.AddComponent<Text>();
             titleText.text = "Level Completed!";
-            titleText.fontSize = 28;
+            titleText.fontSize = 36;
             titleText.color = Color.white;
             titleText.alignment = TextAnchor.MiddleCenter;
             titleText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
