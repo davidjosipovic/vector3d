@@ -23,6 +23,9 @@ public class PlayerController : MonoBehaviour
     [Header("Climb Settings")]
     public float climbSpeed = 5f;
     public float climbOffsetAboveWall = 0.1f;
+    public float climbApproachRayDistance = 1.0f; // new: how far forward to search for the wall face
+    public float climbStartDownOffset = 0.1f;      // new: small offset down from contact point
+    public float climbEdgeForwardPush = 0.3f;      // new: small push over the ledge at the end
 
     [Header("Animation")]
     public Animator animator;
@@ -106,6 +109,8 @@ public class PlayerController : MonoBehaviour
     private float originalAnimatorSpeed = 1f;
 
     private float fallingTime = 0f;
+
+    private Vector3 lastClimbWallNormal;
 
     void Start()
     {
@@ -584,6 +589,30 @@ public class PlayerController : MonoBehaviour
             Collider wallCollider = climbableTransform.GetComponent<Collider>();
             if (wallCollider != null)
             {
+                // Try to get the exact contact point on the wall face the player is looking at
+                Vector3 origin = transform.position + Vector3.up * 0.5f;
+                if (Physics.Raycast(origin, transform.forward, out RaycastHit hit, climbApproachRayDistance))
+                {
+                    if (hit.collider == wallCollider || hit.collider.transform.IsChildOf(climbableTransform))
+                    {
+                        lastClimbWallNormal = hit.normal;
+
+                        Vector3 contact = hit.point - hit.normal * 0.02f; // small inset into air
+                        float bottomY = wallCollider.bounds.min.y;
+                        float topY = wallCollider.bounds.max.y + climbOffsetAboveWall;
+
+                        float startY = Mathf.Max(bottomY, contact.y - climbStartDownOffset);
+                        float endY = Mathf.Max(startY + 0.01f, topY);
+
+                        climbStartPos = new Vector3(contact.x, startY, contact.z);
+                        climbEndPos = new Vector3(contact.x, endY, contact.z);
+
+                        StartCoroutine(ClimbWall());
+                        return;
+                    }
+                }
+
+                // Fallback: old behaviour based on bounds if raycast didn't catch the face
                 Vector3 playerPos = transform.position;
                 Vector3 wallBottom = wallCollider.bounds.min;
                 Vector3 wallTop = wallCollider.bounds.max;
@@ -641,6 +670,12 @@ public class PlayerController : MonoBehaviour
         }
 
         transform.position = endPos;
+
+        // small push over the ledge along the wall surface
+        Vector3 wallTangent = Vector3.Cross(Vector3.up, lastClimbWallNormal).normalized;
+        Vector3 climbForward = Vector3.Cross(lastClimbWallNormal, Vector3.up).normalized; // forward along wall
+        Vector3 nudge = climbForward * climbEdgeForwardPush;
+        transform.position += nudge;
 
         isClimbing = false;
         controller.enabled = true;
