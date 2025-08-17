@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.3570232, g: 0.6970393, b: 0.7235334, a: 1}
+  m_IndirectSpecularColor: {r: 0.35700363, g: 0.69702154, b: 0.7235342, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -6780,8 +6780,67 @@ MonoBehaviour:
   climbCooldown: 0
   climbEdgeForwardPush: 0.4
   climbEdgeIgnoreTime: 0.2
+  climbStartDownOffset: 0.15
+  climbApproachSphereRadius: 0.45
+  climbDetectionForwardDistance: 1.2
+  autoClimbForwardCast: 1
+  autoClimbRequiresForwardInput: 1
+  climbableLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  mantleDuration: 0.5
+  mantleCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 1
+      outSlope: 1
+      tangentMode: 34
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 1
+      outSlope: 1
+      tangentMode: 34
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  mantleExtraUp: 0.3
+  climbForwardBlendStart: 0.65
+  wallCheckDistance: 0.6
+  wallRunLayer:
+    serializedVersion: 2
+    m_Bits: 8
+  wallRunGravity: 7
+  wallRunSpeed: 7
+  maxWallRunTime: 3
+  wallJumpForce: 7
+  wallJumpForwardForce: 1.2
+  wallJumpSideForce: 1
+  wallJumpUpwardForce: 2
+  allowWallJumpChaining: 1
+  wallJumpChainCooldown: 0.1
+  maxConsecutiveWallJumps: 5
+  wallJumpGracePeriod: 0.3
+  wallJumpMovementDuration: 0.7
+  wallContactTolerance: 0.5
+  wallRunMaxFallSpeed: -1
+  wallRunEnterUpwardBoost: 2
+  wallJumpAlongWallInfluence: 0.6
+  wallJumpMinOutwardComponent: 0.4
+  wallJumpAirControlFactor: 2
   climbColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   slideColor: {r: 1, g: 0, b: 1, a: 1}
+  wallRunColor: {r: 0, g: 1, b: 0, a: 1}
+  slowColor: {r: 1, g: 0, b: 0, a: 1}
   slideScaleMultiplier: 0.7
   slideVisualLerpDuration: 0.15
   slideVisualCurve:
@@ -35549,7 +35608,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1978776202}
-  m_LocalRotation: {x: 0.08783726, y: -0.70162994, z: 0.08783723, w: 0.70163006}
+  m_LocalRotation: {x: 0.08783724, y: -0.70163, z: 0.08783724, w: 0.70163}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
