@@ -168,8 +168,8 @@ public class BasicCanvasSetup : MonoBehaviour
         }
         
        
-        CreateButton(completionPanel, "Next Level Button", new Vector2(0, 0.25f), new Vector2(0.45f, 0.45f), "Next Level");
-        CreateButton(completionPanel, "Restart Button", new Vector2(0.55f, 0.25f), new Vector2(1, 0.45f), "Restart Level");
+        CreateButton(completionPanel, "Next Level Button", new Vector2(0, 0.15f), new Vector2(0.45f, 0.35f), "Next Level");
+        CreateButton(completionPanel, "Restart Button", new Vector2(0.55f, 0.15f), new Vector2(1, 0.35f), "Restart Level");
     }
     
     private void CreateButton(GameObject parent, string name, Vector2 anchorMin, Vector2 anchorMax, string buttonText)

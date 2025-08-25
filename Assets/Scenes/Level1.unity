@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.35700363, g: 0.69702154, b: 0.7235342, a: 1}
+  m_IndirectSpecularColor: {r: 0.3570232, g: 0.6970393, b: 0.7235334, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -9087,6 +9087,7 @@ MonoBehaviour:
   textureScrollMultiplier: 0.25
   textureScrollAxis: 0
   textureScrollWrap: 1
+  useSurfaceNormalOnWalls: 1
   lowSpeedThreshold: 0.25
   lowSpeedTime: 0.1
   lowSpeedInitialGrace: 1.2
@@ -11803,7 +11804,7 @@ MonoBehaviour:
   useTextMeshPro: 1
   timerPosition: {x: 20, y: -20}
   timerSize: {x: 200, y: 50}
-  timerFontSize: 24
+  timerFontSize: 22
   timerColor: {r: 1, g: 1, b: 1, a: 1}
   completionPanelSize: {x: 400, y: 300}
   completionBackgroundColor: {r: 0, g: 0, b: 0, a: 0.8}
@@ -18469,7 +18470,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 726368170}
-  m_LocalRotation: {x: 0.1005514, y: -0.699921, z: 0.1005514, w: 0.699921}
+  m_LocalRotation: {x: 0.10055138, y: -0.699921, z: 0.10055138, w: 0.699921}
   m_LocalPosition: {x: -52.73, y: 59.7, z: -238.79}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -61024,7 +61025,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1573239596}
-  m_LocalRotation: {x: 0.10055138, y: -0.699921, z: 0.10055138, w: 0.699921}
+  m_LocalRotation: {x: 0.100551374, y: -0.699921, z: 0.100551374, w: 0.699921}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
