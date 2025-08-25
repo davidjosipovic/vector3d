@@ -110,11 +110,7 @@ public class CheckpointManager : MonoBehaviour
             
             // Reset player velocity first
             PlayerController playerController = player.GetComponent<PlayerController>();
-            if (playerController != null)
-            {
-                // Reset any ongoing states
-                playerController.ResetPlayerState();
-            }
+            
             
             // Reset camera with a small delay to ensure player is positioned
             StartCoroutine(ResetCameraAfterRespawn());
