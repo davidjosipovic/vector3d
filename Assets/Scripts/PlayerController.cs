@@ -35,12 +35,26 @@ public class PlayerController : MonoBehaviour
     // --- Visuals ---
     [Header("Visuals")] public Color climbColor = Color.yellow; public Color slideColor = Color.magenta; public Color wallRunColor = Color.green; public Color slowColor = Color.red; public float slideScaleMultiplier = 0.7f; public float slideVisualLerpDuration = 0.15f; public AnimationCurve slideVisualCurve = null;
 
+    // --- Rolling Visual ---
+    [Header("Rolling Visual")] [Tooltip("Optional separate visual mesh to rotate for rolling effect (leave null to auto use Renderer transform)." )]
+    public Transform visualSphere; [Tooltip("Sphere radius used to compute rotation amount (distance = angle * radius). Set Auto Detect to true to compute from bounds in Awake.")] public float sphereRadius = 0.5f; public bool autoDetectRadius = true; [Tooltip("Minimum planar speed before rolling visual updates.")] public float minRollSpeed = 0.05f; [Tooltip("Pause rolling visual while climbing.")] public bool pauseRollDuringClimb = false;
+
+    [Header("Rolling Visual Enhancement")] [Tooltip("Scroll main texture UVs while se kotrlja radi boljeg osjećaja rotacije (za standardnu sfernu UV mapu).")]
+    public bool rollingTextureScroll = false; [Tooltip("Koliko brzo se tekstura pomiče po prijeđenoj udaljenosti.")]
+    public float textureScrollMultiplier = 0.25f; [Tooltip("Koja UV osa se skroluje: 0 = U (x), 1 = V (y).")]
+    [Range(0,1)] public int textureScrollAxis = 0; [Tooltip("Automatski wrap (0..1) offseta.")]
+    public bool textureScrollWrap = true;
+    [Tooltip("Koristi normalu površine (npr. zida) umjesto uvijek Vector3.up za os rotacije dok se kotrlja.")]
+    public bool useSurfaceNormalOnWalls = true;
+
     // --- Shatter/Respawn ---
-    [Header("Shatter/Respawn Settings")] public float lowSpeedThreshold = 0.25f; public float lowSpeedTime = 0.6f; public float shatterRespawnDelay = 1.2f; public int shatterFragmentCount = 16; public float shatterFragmentScale = 0.15f; public float shatterExplosionForce = 6f; public float shatterExplosionRadius = 1.2f; public float shatterFragmentLifetime = 3f;
+    [Header("Shatter/Respawn Settings")] public float lowSpeedThreshold = 0.25f; public float lowSpeedTime = 0.6f; [Tooltip("Ignore low-speed shatter for this many seconds after spawn / respawn.")]
+    public float lowSpeedInitialGrace = 1.2f; public float shatterRespawnDelay = 1.2f; public int shatterFragmentCount = 16; public float shatterFragmentScale = 0.15f; public float shatterExplosionForce = 6f; public float shatterExplosionRadius = 1.2f; public float shatterFragmentLifetime = 3f;
 
     // --- Private State ---
     private Rigidbody rb; private Collider myCollider; private bool isGrounded; private bool isSliding; private float slideTimer; private bool isClimbing; private float climbCooldownTimer; private float coyoteTimeCounter; private float jumpBufferCounter; private Renderer rend; private Color originalColor; private Vector3 originalScale; private Coroutine slideVisualCoroutine;
-    private float lowSpeedTimer = 0f; private bool isShattered = false; private Vector3 lastPlanarPos; private bool slowColorApplied = false;
+    private Quaternion originalVisualRotation; private Material rollingMatInstance; private Vector2 rollingTexOffset = Vector2.zero; private Vector3 lastRollingPos;
+    private float lowSpeedTimer = 0f; private bool isShattered = false; private Vector3 lastPlanarPos; private bool slowColorApplied = false; private float lowSpeedGraceTimer = 0f; private bool warnedVisualRoot = false;
 
     // Wall run state
     private bool isWallRunning = false; private bool isWallRight = false; private bool isWallLeft = false; private float wallRunTimer = 0f; private bool justWallJumped = false; private float wallJumpCooldownTimer = 0f; private int consecutiveWallJumps = 0; private float wallJumpGraceTimer = 0f; private float wallJumpMovementTimer = 0f; private float wallContactLostTimer = 0f; private Vector3 lastWallNormal = Vector3.zero; private int lastWallSide = 0;
@@ -54,6 +68,22 @@ public class PlayerController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>(); myCollider = GetComponent<Collider>(); rb.interpolation = RigidbodyInterpolation.Interpolate; rb.drag = normalDrag; rb.freezeRotation = true;
         rend = GetComponent<Renderer>(); if (rend == null) rend = GetComponentInChildren<Renderer>(); originalScale = transform.localScale; if (rend != null) originalColor = rend.material.color; if (slideVisualCurve == null) slideVisualCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f); lastPlanarPos = new Vector3(transform.position.x, 0f, transform.position.z);
+    if (visualSphere == null && rend != null) visualSphere = rend.transform; // if this ends up being root, rolling will be skipped to avoid spinning camera
+        if (visualSphere != null) originalVisualRotation = visualSphere.rotation;
+        if (autoDetectRadius && rend != null)
+        {
+            Bounds b = rend.bounds; // assume roughly spherical
+            sphereRadius = (b.extents.x + b.extents.y + b.extents.z) / 3f;
+            if (sphereRadius < 0.001f) sphereRadius = 0.5f;
+        }
+    if (rollingTextureScroll && rend != null)
+        {
+            // Create a unique instance so we don't modify shared material
+            rollingMatInstance = rend.material;
+            rollingTexOffset = Vector2.zero;
+        }
+    lowSpeedGraceTimer = lowSpeedInitialGrace;
+    lastRollingPos = transform.position;
     if (mantleCurve == null) mantleCurve = AnimationCurve.EaseInOut(0,0,1,1);
     }
 
@@ -68,7 +98,9 @@ public class PlayerController : MonoBehaviour
         if (wallJumpGraceTimer > 0f) wallJumpGraceTimer -= Time.deltaTime; if (wallJumpMovementTimer > 0f) wallJumpMovementTimer -= Time.deltaTime;
     }
 
-    void FixedUpdate(){ if (levelFinished) return; if (isClimbing) return; if (isWallRunning) WallRunningMovement(); else ApplyMovement(); }
+    void FixedUpdate(){ if (levelFinished) return; if (isClimbing){ // still update rolling unless explicitly paused
+            if (!pauseRollDuringClimb) UpdateRollingVisual(); return; }
+        if (isWallRunning) WallRunningMovement(); else ApplyMovement(); UpdateRollingVisual(); }
 
     // --- Ground Check ---
     private void GroundCheck(){ Vector3 origin = transform.position + Vector3.up * 0.05f; float radius = 0.49f; RaycastHit hit; bool wasGrounded = isGrounded; isGrounded = Physics.SphereCast(origin, radius, Vector3.down, out hit, groundCheckDistance, groundLayers, QueryTriggerInteraction.Ignore); if (isGrounded){ if (!wasGrounded) coyoteTimeCounter = coyoteTimeDuration; consecutiveWallJumps = 0; wallJumpGraceTimer = 0f; if (isWallRunning) StopWallRun(); } else { if (coyoteTimeCounter > 0f) coyoteTimeCounter -= Time.deltaTime; }}
@@ -211,9 +243,31 @@ public class PlayerController : MonoBehaviour
     private void UpdateSlowVisual(){ if (rend == null) return; bool slowKey = Input.GetKey(KeyCode.C); bool canShowSlow = slowKey && !isSliding && !isClimbing && !isWallRunning && !isShattered; if (canShowSlow && !slowColorApplied){ rend.material.color = slowColor; slowColorApplied = true; } else if ((!canShowSlow) && slowColorApplied){ if (!isSliding && !isClimbing && !isWallRunning && !isShattered) rend.material.color = originalColor; slowColorApplied = false; } }
 
     // --- Shatter & Respawn ---
-    private void MonitorLowSpeed(){ if (isShattered || isClimbing){ lowSpeedTimer = 0f; lastPlanarPos = new Vector3(transform.position.x, 0f, transform.position.z); return; } Vector3 currPlanar = new Vector3(transform.position.x, 0f, transform.position.z); float dt = Mathf.Max(Time.deltaTime, 0.0001f); float planarSpeed = (currPlanar - lastPlanarPos).magnitude / dt; if (planarSpeed < lowSpeedThreshold){ lowSpeedTimer += Time.deltaTime; if (lowSpeedTimer >= lowSpeedTime) StartCoroutine(ShatterAndRespawn()); } else lowSpeedTimer = 0f; lastPlanarPos = currPlanar; }
+    private void MonitorLowSpeed(){
+        if (isShattered || isClimbing){ lowSpeedTimer = 0f; lastPlanarPos = new Vector3(transform.position.x, 0f, transform.position.z); return; }
+        if (lowSpeedGraceTimer > 0f){ lowSpeedGraceTimer -= Time.deltaTime; lastPlanarPos = new Vector3(transform.position.x, 0f, transform.position.z); return; }
+        Vector3 currPlanar = new Vector3(transform.position.x, 0f, transform.position.z);
+        float dt = Mathf.Max(Time.deltaTime, 0.0001f);
+        float planarSpeed = (currPlanar - lastPlanarPos).magnitude / dt;
 
-    private System.Collections.IEnumerator ShatterAndRespawn(){ if (isShattered) yield break; isShattered = true; if (slideVisualCoroutine != null) StopCoroutine(slideVisualCoroutine); SpawnFragments(); if (rend != null) rend.enabled = false; if (myCollider != null) myCollider.enabled = false; rb.velocity = Vector3.zero; rb.isKinematic = true; yield return new WaitForSeconds(shatterRespawnDelay); bool didRespawn = false; if (CheckpointManager.Instance != null){ CheckpointManager.Instance.RespawnPlayer(); didRespawn = true; } if (!didRespawn){ var scene = SceneManager.GetActiveScene(); SceneManager.LoadScene(scene.buildIndex); yield break; } transform.localScale = originalScale; if (rend != null){ rend.material.color = originalColor; rend.enabled = true; } if (myCollider != null) myCollider.enabled = true; rb.isKinematic = false; rb.drag = normalDrag; rb.velocity = Vector3.zero; isSliding = false; isClimbing = false; climbCooldownTimer = 0f; coyoteTimeCounter = 0f; jumpBufferCounter = 0f; lowSpeedTimer = 0f; isShattered = false; lastPlanarPos = new Vector3(transform.position.x, 0f, transform.position.z); isWallRunning = false; isWallRight = false; isWallLeft = false; wallRunTimer = 0f; justWallJumped = false; wallJumpCooldownTimer = 0f; consecutiveWallJumps = 0; wallJumpGraceTimer = 0f; wallJumpMovementTimer = 0f; wallContactLostTimer = 0f; lastWallNormal = Vector3.zero; lastWallSide = 0; }
+        // Treat as "stuck" if player is pressing movement input but planar speed is very low.
+    bool forwardInput = Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow);
+    bool strafeInput = Mathf.Abs(Input.GetAxisRaw("Horizontal")) > 0.1f;
+    bool movementInput = forwardInput || strafeInput;
+    // Auto forward intent: controller always tries to move forward (forwardSpeed > 0) even bez inputa.
+    bool autoForwardIntent = forwardSpeed > 0.01f; // since ApplyMovement sets forward velocity every frame
+    bool shouldCount = planarSpeed < lowSpeedThreshold && ( !isGrounded || movementInput || autoForwardIntent );
+
+        if (shouldCount){
+            lowSpeedTimer += Time.deltaTime;
+            if (lowSpeedTimer >= lowSpeedTime) StartCoroutine(ShatterAndRespawn());
+        } else {
+            lowSpeedTimer = 0f;
+        }
+        lastPlanarPos = currPlanar;
+    }
+
+    private System.Collections.IEnumerator ShatterAndRespawn(){ if (isShattered) yield break; isShattered = true; if (slideVisualCoroutine != null) StopCoroutine(slideVisualCoroutine); SpawnFragments(); if (rend != null) rend.enabled = false; if (myCollider != null) myCollider.enabled = false; rb.velocity = Vector3.zero; rb.isKinematic = true; yield return new WaitForSeconds(shatterRespawnDelay); bool didRespawn = false; if (CheckpointManager.Instance != null){ CheckpointManager.Instance.RespawnPlayer(); didRespawn = true; } if (!didRespawn){ var scene = SceneManager.GetActiveScene(); SceneManager.LoadScene(scene.buildIndex); yield break; } transform.localScale = originalScale; if (rend != null){ rend.material.color = originalColor; rend.enabled = true; } if (myCollider != null) myCollider.enabled = true; rb.isKinematic = false; rb.drag = normalDrag; rb.velocity = Vector3.zero; isSliding = false; isClimbing = false; climbCooldownTimer = 0f; coyoteTimeCounter = 0f; jumpBufferCounter = 0f; lowSpeedTimer = 0f; isShattered = false; lastPlanarPos = new Vector3(transform.position.x, 0f, transform.position.z); isWallRunning = false; isWallRight = false; isWallLeft = false; wallRunTimer = 0f; justWallJumped = false; wallJumpCooldownTimer = 0f; consecutiveWallJumps = 0; wallJumpGraceTimer = 0f; wallJumpMovementTimer = 0f; wallContactLostTimer = 0f; lastWallNormal = Vector3.zero; lastWallSide = 0; lowSpeedGraceTimer = lowSpeedInitialGrace; }
 
     // --- Level Finish Freeze ---
     public void FreezeAtLevelEnd()
@@ -229,4 +283,71 @@ public class PlayerController : MonoBehaviour
     }
 
     private void SpawnFragments(){ Vector3 center = transform.position; float worldRadius = 0.5f * Mathf.Max(transform.lossyScale.x, transform.lossyScale.y, transform.lossyScale.z); for (int i = 0; i < shatterFragmentCount; i++){ var piece = GameObject.CreatePrimitive(PrimitiveType.Sphere); piece.transform.localScale = Vector3.one * shatterFragmentScale; piece.transform.position = center + Random.insideUnitSphere * (worldRadius * 0.5f); var pr = piece.GetComponent<Renderer>(); if (pr != null && rend != null) pr.material.color = originalColor; var pc = piece.GetComponent<Collider>(); if (pc != null && myCollider != null) Physics.IgnoreCollision(pc, myCollider, true); var rbPiece = piece.AddComponent<Rigidbody>(); rbPiece.mass = 0.05f; rbPiece.interpolation = RigidbodyInterpolation.Interpolate; rbPiece.AddExplosionForce(shatterExplosionForce, center, shatterExplosionRadius, 0.1f, ForceMode.Impulse); Destroy(piece, shatterFragmentLifetime); } }
+
+    // --- Rolling Visual Update ---
+    private void UpdateRollingVisual()
+    {
+        if (visualSphere == null || isShattered) return;
+        // Prevent rotating root object (would rotate camera & affect movement forward)
+        if (visualSphere == transform)
+        {
+            if (!warnedVisualRoot)
+            {
+                Debug.LogWarning("PlayerController: visualSphere is root; rolling skipped. Create child with mesh and assign to 'visualSphere'.");
+                warnedVisualRoot = true;
+            }
+            return;
+        }
+        Vector3 currentPos = transform.position;
+        Vector3 vel = rb.velocity;
+        Vector3 surfaceNormal = Vector3.up;
+        if (useSurfaceNormalOnWalls && isWallRunning)
+        {
+            if (lastWallNormal != Vector3.zero) surfaceNormal = lastWallNormal;
+            else if (isWallRight) surfaceNormal = -transform.right; else if (isWallLeft) surfaceNormal = transform.right;
+        }
+        // Tangential velocity projected to plane of surface
+        Vector3 tangentVel = vel - Vector3.Project(vel, surfaceNormal);
+        float speed = tangentVel.magnitude;
+        // Fallbacks for kinematic climb / zero velocity
+        if (speed < 0.001f)
+        {
+            Vector3 disp = currentPos - lastRollingPos;
+            Vector3 dispTangent = disp - Vector3.Project(disp, surfaceNormal);
+            if (dispTangent.sqrMagnitude > 1e-6f)
+            {
+                speed = dispTangent.magnitude / Mathf.Max(Time.fixedDeltaTime, 0.0001f);
+                tangentVel = dispTangent.normalized * speed;
+            }
+            else if (isClimbing)
+            {
+                speed = climbSpeed;
+                // assume forward direction tangent to climb surface (approximation)
+                tangentVel = (transform.forward - Vector3.Project(transform.forward, surfaceNormal)).normalized * speed;
+            }
+        }
+        if (speed < minRollSpeed || sphereRadius <= 0.0001f){ lastRollingPos = currentPos; return; }
+        Vector3 dir = tangentVel.normalized;
+        // Angular velocity axis ~ N x V (gives correct roll direction for arbitrary plane)
+        Vector3 axis = Vector3.Cross(surfaceNormal, dir);
+        if (axis.sqrMagnitude < 1e-6f) return;
+        float distance = speed * Time.fixedDeltaTime;
+        float angleDeg = (distance / sphereRadius) * Mathf.Rad2Deg;
+        visualSphere.Rotate(axis, angleDeg, Space.World);
+
+        if (rollingTextureScroll && rollingMatInstance != null)
+        {
+            // Shift UV proportional to circumferential rotation. One full revolution = distance = 2πr.
+            float revolutions = distance / (Mathf.Max(0.0001f, 2f * Mathf.PI * sphereRadius));
+            float delta = revolutions * textureScrollMultiplier; // scale factor
+            if (textureScrollAxis == 0) rollingTexOffset.x += delta; else rollingTexOffset.y += delta;
+            if (textureScrollWrap)
+            {
+                if (rollingTexOffset.x > 1f || rollingTexOffset.x < -1f) rollingTexOffset.x = rollingTexOffset.x % 1f;
+                if (rollingTexOffset.y > 1f || rollingTexOffset.y < -1f) rollingTexOffset.y = rollingTexOffset.y % 1f;
+            }
+            rollingMatInstance.SetTextureOffset("_MainTex", rollingTexOffset);
+        }
+        lastRollingPos = currentPos;
+    }
 }
