@@ -5689,7 +5689,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 41345149}
-  m_LocalRotation: {x: 0.11326594, y: -0.69797623, z: 0.11326594, w: 0.69797623}
+  m_LocalRotation: {x: 0.11326595, y: -0.69797623, z: 0.113265954, w: 0.69797623}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -24943,6 +24943,7 @@ MonoBehaviour:
   textureScrollMultiplier: 0.25
   textureScrollAxis: 0
   textureScrollWrap: 1
+  useSurfaceNormalOnWalls: 1
   lowSpeedThreshold: 0.25
   lowSpeedTime: 0.1
   lowSpeedInitialGrace: 1.2
@@ -65905,7 +65906,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3642498522756788376, guid: f422ebd937f1ad346bc738de64a996e0, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 16.549988
+      value: 16.78
       objectReference: {fileID: 0}
     - target: {fileID: 3642498522756788376, guid: f422ebd937f1ad346bc738de64a996e0, type: 3}
       propertyPath: m_LocalPosition.y
@@ -65913,7 +65914,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3642498522756788376, guid: f422ebd937f1ad346bc738de64a996e0, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0.23999023
+      value: 0.24
       objectReference: {fileID: 0}
     - target: {fileID: 3642498522756788376, guid: f422ebd937f1ad346bc738de64a996e0, type: 3}
       propertyPath: m_LocalRotation.w
@@ -66993,7 +66994,7 @@ Mesh:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: pb_Mesh112128
+  m_Name: pb_Mesh394920
   serializedVersion: 10
   m_SubMeshes:
   - serializedVersion: 2
